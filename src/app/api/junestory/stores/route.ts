@@ -1,33 +1,48 @@
 import { NextResponse } from 'next/server'
-import { promises as fs } from 'fs'
-import path from 'path'
+import { loadJsonFromFolder } from '@/lib/drive'
+
+// 企業マスタのstores.json形式
+interface MasterStoreData {
+  company_name?: string
+  generated_at?: string
+  stores: Array<{
+    store_code: string
+    name: string
+    [key: string]: unknown
+  }>
+  pos_code_mapping?: Record<string, string>
+}
 
 export async function GET() {
   try {
-    // 店舗マスタを読み込み
-    const dataPath = path.join(process.cwd(), 'scripts', 'junestory_stores.json')
+    const masterFolderId = process.env.MASTER_FOLDER_ID
+    if (!masterFolderId) {
+      return NextResponse.json({
+        success: false,
+        error: 'MASTER_FOLDER_ID is not configured'
+      }, { status: 500 })
+    }
 
-    try {
-      const fileContent = await fs.readFile(dataPath, 'utf-8')
-      const data = JSON.parse(fileContent)
+    const result = await loadJsonFromFolder<MasterStoreData>('stores.json', masterFolderId)
 
-      return new NextResponse(JSON.stringify({
-        success: true,
-        data: data.stores,
-        meta: {
-          company_name: data.company_name,
-          total_stores: data.stores.length,
-          pos_code_mapping: data.pos_code_mapping,
-        }
-      }), {
-        headers: { 'Content-Type': 'application/json; charset=utf-8' }
-      })
-    } catch (fileError) {
+    if (!result) {
       return NextResponse.json({
         success: false,
         error: '店舗マスタファイルが見つかりません'
       }, { status: 404 })
     }
+
+    return new NextResponse(JSON.stringify({
+      success: true,
+      data: result.data.stores,
+      meta: {
+        company_name: result.data.company_name,
+        total_stores: result.data.stores.length,
+        pos_code_mapping: result.data.pos_code_mapping,
+      }
+    }), {
+      headers: { 'Content-Type': 'application/json; charset=utf-8' }
+    })
   } catch (error) {
     console.error('Stores fetch error:', error)
     return NextResponse.json({

@@ -23,22 +23,22 @@ export function hashPassword(password: string): string {
 }
 
 // アカウント（マスター管理）
-const accounts: Record<string, { name: string; role: 'admin' | 'user' }> = {
-  'owner': { name: 'オーナー', role: 'admin' },
+const accounts: Record<string, { password: string; name: string; role: 'admin' | 'user' }> = {
+  'junestory': { password: 'owner', name: 'オーナー', role: 'admin' },
 }
 
 export async function verifyCredentials(
   email: string,
   passwordPlain: string
 ): Promise<User | null> {
-  // アカウント認証（email と password が同じ場合）
-  if (email in accounts && passwordPlain === email) {
+  // アカウント認証
+  if (email in accounts && passwordPlain === accounts[email].password) {
     const account = accounts[email]
     return {
       id: `user-${email}`,
       client_id: '',
       email: email,
-      password_hash: hashPassword(email),
+      password_hash: hashPassword(passwordPlain),
       name: account.name,
       role: account.role,
       created_at: new Date().toISOString(),

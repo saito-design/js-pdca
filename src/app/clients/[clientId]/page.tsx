@@ -2,8 +2,10 @@
 
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { Store, ChevronLeft, LogOut, LayoutDashboard, Eye, Plus, FileText, Pencil, Trash2, ChevronUp, ChevronDown, RefreshCw, Database } from 'lucide-react'
+import { Store, ChevronLeft, LogOut, LayoutDashboard, Eye, Plus, FileText, Pencil, Trash2, ChevronUp, ChevronDown, RefreshCw, Database, Home } from 'lucide-react'
 import type { Entity, Client, SessionData } from '@/lib/types'
+
+const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'
 
 type PageProps = {
   params: Promise<{ clientId: string }>
@@ -31,8 +33,14 @@ export default function EntitiesPage({ params }: PageProps) {
     hasDataSource: boolean
   } | null>(null)
   const [refreshingData, setRefreshingData] = useState(false)
+  const [fromPortal, setFromPortal] = useState(false)
 
   useEffect(() => {
+    // ポータルから来たかチェック
+    const portalToken = sessionStorage.getItem('auth_junestory')
+    if (portalToken) {
+      setFromPortal(true)
+    }
     fetchData()
   }, [clientId])
 
@@ -223,17 +231,30 @@ export default function EntitiesPage({ params }: PageProps) {
       <header className="bg-white shadow">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button
-              onClick={handleBack}
-              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-            >
-              <ChevronLeft size={16} />
-              戻る
-            </button>
+            {!fromPortal && (
+              <button
+                onClick={handleBack}
+                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+              >
+                <ChevronLeft size={16} />
+                戻る
+              </button>
+            )}
             <h1 className="text-xl font-bold">{client?.name || 'PDCA Dashboard'}</h1>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{user?.name}</span>
+            <button
+              onClick={() => {
+                window.close()
+                // フォールバック: 閉じられない場合はポータルへ遷移
+                setTimeout(() => { window.location.href = PORTAL_URL }, 100)
+              }}
+              className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-800"
+            >
+              <Home size={16} />
+              ポータル
+            </button>
             <button
               onClick={handleLogout}
               className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"

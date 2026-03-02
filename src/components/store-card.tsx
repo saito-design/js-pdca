@@ -37,7 +37,9 @@ export function StoreCard({ store, onClick, selected }: StoreCardProps) {
       onClick={onClick}
       className={`
         p-4 rounded-lg border-2 cursor-pointer transition-all
-        ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-400'}
+        ${selected
+          ? 'border-blue-500 bg-blue-50'
+          : 'border-gray-200 hover:border-gray-400 hover:bg-gray-50 active:bg-blue-100 active:border-blue-300'}
       `}
     >
       {/* ヘッダー: 業態バッジ + ランク */}

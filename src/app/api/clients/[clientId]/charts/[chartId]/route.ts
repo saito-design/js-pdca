@@ -88,7 +88,7 @@ export async function PATCH(
       )
     }
 
-    if (updates.agg_key && !['raw', 'yoy_diff', 'yoy_pct'].includes(updates.agg_key as string)) {
+    if (updates.agg_key && !['raw', 'yoy_diff', 'yoy_pct', 'cumulative'].includes(updates.agg_key as string)) {
       return NextResponse.json(
         { success: false, error: '集計タイプが無効です' },
         { status: 400 }

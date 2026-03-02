@@ -119,7 +119,7 @@ export async function POST(
       )
     }
 
-    if (!['raw', 'yoy_diff', 'yoy_pct'].includes(agg_key)) {
+    if (!['raw', 'yoy_diff', 'yoy_pct', 'cumulative'].includes(agg_key)) {
       return NextResponse.json(
         { success: false, error: '集計タイプが無効です' },
         { status: 400 }

@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
 import { PosRecord } from '@/lib/types'
+import { formatCurrency } from '@/lib/formatters'
 
 interface PosDashboardProps {
   data: PosRecord[]
@@ -14,16 +15,6 @@ interface PosDashboardProps {
 }
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
-
-function formatValue(value: number, unit: string): string {
-  if (unit === '円') {
-    if (value >= 10000) {
-      return `${(value / 10000).toFixed(1)}万`
-    }
-    return value.toLocaleString()
-  }
-  return value.toLocaleString()
-}
 
 // 売上推移グラフ
 export function SalesTrendChart({ data, storeCode }: { data: PosRecord[], storeCode?: string }) {
@@ -167,7 +158,7 @@ export function CategoryPieChart({ data, storeCode }: { data: PosRecord[], store
               <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip formatter={(v) => formatValue(Number(v) || 0, '円')} />
+          <Tooltip formatter={(v) => formatCurrency(Number(v) || 0, '円')} />
         </PieChart>
       </ResponsiveContainer>
     </div>
@@ -293,7 +284,7 @@ export function PosKpiCards({ data, storeCode }: { data: PosRecord[], storeCode?
         <div key={kpi.label} className="bg-white p-4 rounded-lg shadow">
           <div className="text-sm text-gray-500">{kpi.label}</div>
           <div className="text-2xl font-bold">
-            {formatValue(kpi.value, kpi.unit)}
+            {formatCurrency(kpi.value, kpi.unit, kpi.label)}
             <span className="text-sm font-normal text-gray-500 ml-1">{kpi.unit}</span>
           </div>
           {kpi.change !== undefined && (
