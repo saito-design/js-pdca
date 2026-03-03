@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AlertTriangle } from 'lucide-react'
 
@@ -16,6 +16,18 @@ function decodeToken(token: string): { role: string; company: string; exp: numbe
 }
 
 export default function JunestoryPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-gray-500">認証確認中...</div>
+      </div>
+    }>
+      <JunestoryContent />
+    </Suspense>
+  )
+}
+
+function JunestoryContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
