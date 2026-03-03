@@ -60,7 +60,7 @@ export function AuthProvider({ children, requirePortalAuth = false }: AuthProvid
         <div className="text-center">
           <p className="text-gray-600 mb-4">ポータルからログインしてください</p>
           <a
-            href="http://localhost:3000"
+            href={process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}
             className="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
           >
             ポータルへ
