@@ -31,7 +31,7 @@ interface StorePdcaData {
   tasks: StoreTask[]
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data', 'junestory', 'pdca')
+const DATA_DIR = path.join(process.cwd(), 'data', 'junestry', 'pdca')
 
 async function ensureDataDir() {
   try {
@@ -106,7 +106,7 @@ export async function POST(
     // 新規サイクル作成
     const newCycle: PdcaCycle = {
       id: `cycle-${Date.now()}`,
-      client_id: 'junestory',
+      client_id: 'junestry',
       entity_id: storeCode,
       issue_id: 'store-meeting',
       cycle_date: now.split('T')[0],

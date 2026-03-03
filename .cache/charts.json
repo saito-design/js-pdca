@@ -1,1 +1,236 @@
-{}
+{
+  "client-mlqgs0vx-lpyp": [
+    {
+      "id": "chart-1771826730951-pap3",
+      "client_id": "client-mlqgs0vx-lpyp",
+      "title": "新規グラフ",
+      "type": "bar",
+      "x_key": "yearMonth",
+      "series_keys": [
+        "RevPAR(OCC*ADR)（実績累計）",
+        "RevPAR(OCC*ADR)",
+        "RevPAR(OCC*ADR)（計画）",
+        "RevPAR(OCC*ADR)（計画累計）"
+      ],
+      "series_config": [
+        {
+          "key": "RevPAR(OCC*ADR)（実績累計）",
+          "chartType": "line",
+          "color": "#f59e0b",
+          "yAxisId": "right"
+        },
+        {
+          "key": "RevPAR(OCC*ADR)",
+          "chartType": "bar",
+          "color": "#10b981"
+        },
+        {
+          "key": "RevPAR(OCC*ADR)（計画）",
+          "chartType": "bar",
+          "color": "#ec4899"
+        },
+        {
+          "key": "RevPAR(OCC*ADR)（計画累計）",
+          "chartType": "line",
+          "color": "#8b5cf6",
+          "yAxisId": "right"
+        }
+      ],
+      "agg_key": "raw",
+      "store_override": null,
+      "filters": {},
+      "show_on_dashboard": true,
+      "sort_order": 10,
+      "created_at": "2026-02-23T06:05:30.951Z",
+      "updated_at": "2026-02-23T06:09:47.264Z"
+    }
+  ],
+  "client-junestory": [
+    {
+      "id": "chart-1772021956787-rem6",
+      "client_id": "client-junestory",
+      "title": "売上推移",
+      "type": "bar",
+      "x_key": "yearMonth",
+      "series_keys": [
+        "純売上高",
+        "純売上高（前年）",
+        "純売上高（実績累計）",
+        "純売上高（前年累計）"
+      ],
+      "series_config": [
+        {
+          "key": "純売上高",
+          "chartType": "bar",
+          "lineStyle": "solid",
+          "opacity": 0.7,
+          "color": "#f97316",
+          "strokeWidth": 2,
+          "yAxisId": "left",
+          "hidden": false
+        },
+        {
+          "key": "純売上高（前年）",
+          "chartType": "bar",
+          "lineStyle": "solid",
+          "opacity": 0.7,
+          "color": "#c0c0c0",
+          "strokeWidth": 2,
+          "yAxisId": "left",
+          "hidden": false
+        },
+        {
+          "key": "純売上高（実績累計）",
+          "chartType": "line",
+          "lineStyle": "solid",
+          "opacity": 1,
+          "color": "#ff8000",
+          "strokeWidth": 3,
+          "yAxisId": "right",
+          "hidden": false
+        },
+        {
+          "key": "純売上高（前年累計）",
+          "chartType": "line",
+          "lineStyle": "solid",
+          "opacity": 0.7,
+          "color": "#c0c0c0",
+          "strokeWidth": 2,
+          "yAxisId": "right",
+          "hidden": false
+        }
+      ],
+      "agg_key": "raw",
+      "store_override": null,
+      "filters": {},
+      "show_on_dashboard": true,
+      "sort_order": 10,
+      "created_at": "2026-02-25T12:19:16.787Z",
+      "updated_at": "2026-02-25T13:41:54.777Z"
+    },
+    {
+      "id": "chart-1772031587680-5cdp",
+      "client_id": "client-junestory",
+      "title": "粗利",
+      "type": "bar",
+      "x_key": "yearMonth",
+      "series_keys": [
+        "売上総利益（売上比）",
+        "売上総利益（前年売上比）",
+        "売上総利益（売上比累計）",
+        "売上総利益（前年売上比累計）"
+      ],
+      "series_config": [
+        {
+          "key": "売上総利益（売上比）",
+          "chartType": "bar",
+          "lineStyle": "solid",
+          "opacity": 1,
+          "color": "#14b8a6",
+          "strokeWidth": 2,
+          "yAxisId": "left",
+          "hidden": false
+        },
+        {
+          "key": "売上総利益（前年売上比）",
+          "chartType": "bar",
+          "lineStyle": "solid",
+          "opacity": 0.7,
+          "color": "#c0c0c0",
+          "strokeWidth": 2,
+          "yAxisId": "left",
+          "hidden": false
+        },
+        {
+          "key": "売上総利益（売上比累計）",
+          "chartType": "line",
+          "lineStyle": "solid",
+          "opacity": 1,
+          "color": "#008000",
+          "strokeWidth": 3,
+          "yAxisId": "left",
+          "hidden": false
+        },
+        {
+          "key": "売上総利益（前年売上比累計）",
+          "chartType": "line",
+          "lineStyle": "solid",
+          "opacity": 0.7,
+          "color": "#c0c0c0",
+          "strokeWidth": 2,
+          "yAxisId": "left",
+          "hidden": false
+        }
+      ],
+      "agg_key": "raw",
+      "store_override": null,
+      "filters": {},
+      "show_on_dashboard": true,
+      "sort_order": 20,
+      "created_at": "2026-02-25T14:59:47.680Z",
+      "updated_at": "2026-02-25T15:10:30.498Z"
+    },
+    {
+      "id": "chart-1772031718069-pdyo",
+      "client_id": "client-junestory",
+      "title": "営業利益",
+      "type": "bar",
+      "x_key": "yearMonth",
+      "series_keys": [
+        "営業利益(損失)（売上比）",
+        "営業利益(損失)（前年売上比）",
+        "営業利益(損失)（売上比累計）",
+        "営業利益(損失)（前年売上比累計）"
+      ],
+      "series_config": [
+        {
+          "key": "営業利益(損失)（売上比）",
+          "chartType": "bar",
+          "lineStyle": "solid",
+          "opacity": 1,
+          "color": "#8b5cf6",
+          "strokeWidth": 2,
+          "yAxisId": "left",
+          "hidden": false
+        },
+        {
+          "key": "営業利益(損失)（前年売上比）",
+          "chartType": "bar",
+          "lineStyle": "solid",
+          "opacity": 0.7,
+          "color": "#c0c0c0",
+          "strokeWidth": 2,
+          "yAxisId": "left",
+          "hidden": false
+        },
+        {
+          "key": "営業利益(損失)（売上比累計）",
+          "chartType": "line",
+          "lineStyle": "solid",
+          "opacity": 1,
+          "color": "#f59e0b",
+          "strokeWidth": 2,
+          "yAxisId": "left",
+          "hidden": false
+        },
+        {
+          "key": "営業利益(損失)（前年売上比累計）",
+          "chartType": "line",
+          "lineStyle": "solid",
+          "opacity": 0.7,
+          "color": "#c0c0c0",
+          "strokeWidth": 2,
+          "yAxisId": "left",
+          "hidden": false
+        }
+      ],
+      "agg_key": "raw",
+      "store_override": null,
+      "filters": {},
+      "show_on_dashboard": true,
+      "sort_order": 30,
+      "created_at": "2026-02-25T15:01:58.069Z",
+      "updated_at": "2026-02-25T15:02:42.260Z"
+    }
+  ]
+}

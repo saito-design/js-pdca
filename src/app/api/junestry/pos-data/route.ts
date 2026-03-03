@@ -5,7 +5,7 @@ import path from 'path'
 export async function GET() {
   try {
     // ローカルデータファイルを読み込み
-    const dataPath = path.join(process.cwd(), 'data', 'junestory', 'pos_data.json')
+    const dataPath = path.join(process.cwd(), 'data', 'junestry', 'pos_data.json')
 
     try {
       const fileContent = await fs.readFile(dataPath, 'utf-8')
@@ -29,7 +29,7 @@ export async function GET() {
       return NextResponse.json({
         success: false,
         error: 'POSデータファイルが見つかりません。変換スクリプトを実行してください。',
-        hint: 'python scripts/convert_junestory_pos.py'
+        hint: 'python scripts/convert_junestry_pos.py'
       }, { status: 404 })
     }
   } catch (error) {

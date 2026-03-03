@@ -4,7 +4,7 @@ import path from 'path'
 
 export async function GET() {
   try {
-    const dataPath = path.join(process.cwd(), 'data', 'junestory', 'pl_data.json')
+    const dataPath = path.join(process.cwd(), 'data', 'junestry', 'pl_data.json')
 
     try {
       const fileContent = await fs.readFile(dataPath, 'utf-8')
@@ -28,7 +28,7 @@ export async function GET() {
       return NextResponse.json({
         success: false,
         error: '会計データファイルが見つかりません。変換スクリプトを実行してください。',
-        hint: 'python scripts/convert_junestory_pl.py'
+        hint: 'python scripts/convert_junestry_pl.py'
       }, { status: 404 })
     }
   } catch (error) {

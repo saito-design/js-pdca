@@ -37,24 +37,24 @@ function JunestoryContent() {
     const urlToken = searchParams.get('auth_token')
     if (urlToken) {
       const decoded = decodeToken(urlToken)
-      if (decoded && decoded.exp > Date.now() && decoded.company === 'junestory') {
-        sessionStorage.setItem('auth_junestory', urlToken)
+      if (decoded && decoded.exp > Date.now() && decoded.company === 'junestry') {
+        sessionStorage.setItem('auth_junestry', urlToken)
         window.history.replaceState({}, '', window.location.pathname)
         // 認証OK - クライアントページへリダイレクト
-        router.replace('/clients/client-junestory')
+        router.replace('/clients/client-junestry')
         return
       }
     }
 
     // セッションからトークンを確認
-    const sessionToken = sessionStorage.getItem('auth_junestory')
+    const sessionToken = sessionStorage.getItem('auth_junestry')
     if (sessionToken) {
       const decoded = decodeToken(sessionToken)
-      if (decoded && decoded.exp > Date.now() && decoded.company === 'junestory') {
-        router.replace('/clients/client-junestory')
+      if (decoded && decoded.exp > Date.now() && decoded.company === 'junestry') {
+        router.replace('/clients/client-junestry')
         return
       } else {
-        sessionStorage.removeItem('auth_junestory')
+        sessionStorage.removeItem('auth_junestry')
       }
     }
 

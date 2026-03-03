@@ -42,7 +42,7 @@ type RouteContext = {
 }
 
 async function loadJsonData(filename: string): Promise<DataRecord[]> {
-  const dataPath = path.join(process.cwd(), 'data', 'junestory', filename)
+  const dataPath = path.join(process.cwd(), 'data', 'junestry', filename)
   try {
     const content = await fs.readFile(dataPath, 'utf-8')
     const data = JSON.parse(content)

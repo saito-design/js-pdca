@@ -24,7 +24,7 @@ export function hashPassword(password: string): string {
 
 // アカウント（マスター管理）
 const accounts: Record<string, { password: string; name: string; role: 'admin' | 'user' }> = {
-  'junestory': { password: 'owner', name: 'オーナー', role: 'admin' },
+  'junestry': { password: 'owner', name: 'オーナー', role: 'admin' },
 }
 
 export async function verifyCredentials(

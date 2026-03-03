@@ -37,7 +37,7 @@ export default function EntitiesPage({ params }: PageProps) {
 
   useEffect(() => {
     // ポータルから来たかチェック
-    const portalToken = sessionStorage.getItem('auth_junestory')
+    const portalToken = sessionStorage.getItem('auth_junestry')
     if (portalToken) {
       setFromPortal(true)
     }

@@ -206,7 +206,7 @@ export default function ClientsPage() {
   }
 
   const isMasterClient = (clientId: string) => {
-    return ['junestory', 'tottori-kyosai'].includes(clientId)
+    return ['junestry', 'tottori-kyosai'].includes(clientId)
   }
 
   const handleEditClick = (client: Client, e: React.MouseEvent) => {

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     await requireClientAccess(clientId)
 
     // クライアントIDのマッピング
-    const excelClientId = clientId === 'demo-client-1' ? 'junestory' : clientId
+    const excelClientId = clientId === 'demo-client-1' ? 'junestry' : clientId
 
     const result = refreshCache(excelClientId)
 
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     await requireClientAccess(clientId)
 
     // クライアントIDのマッピング
-    const excelClientId = clientId === 'demo-client-1' ? 'junestory' : clientId
+    const excelClientId = clientId === 'demo-client-1' ? 'junestry' : clientId
 
     const updatedAt = getCacheUpdatedAt(excelClientId)
 
