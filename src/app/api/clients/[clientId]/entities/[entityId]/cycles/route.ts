@@ -5,6 +5,7 @@ import { isDriveConfigured } from '@/lib/drive'
 import {
   getClientFolderId,
   loadMasterData,
+  saveMasterData,
 } from '@/lib/entity-helpers'
 
 type RouteParams = {
@@ -71,6 +72,81 @@ export async function GET(
     console.error('Get cycles by entity error:', error)
     return NextResponse.json(
       { success: false, error: 'サイクル一覧の取得に失敗しました' },
+      { status: 500 }
+    )
+  }
+}
+
+// サイクル削除
+export async function DELETE(
+  request: NextRequest,
+  context: RouteParams
+): Promise<NextResponse<ApiResponse<null>>> {
+  try {
+    const { clientId, entityId } = await context.params
+    await requireClientAccess(clientId)
+
+    const body = await request.json()
+    const { id } = body as { id: string }
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'サイクルIDが必要です' },
+        { status: 400 }
+      )
+    }
+
+    if (!isDriveConfigured()) {
+      return NextResponse.json(
+        { success: false, error: 'Google Driveが設定されていません' },
+        { status: 500 }
+      )
+    }
+
+    const clientFolderId = await getClientFolderId(clientId)
+    if (!clientFolderId) {
+      return NextResponse.json(
+        { success: false, error: '企業が見つかりません' },
+        { status: 404 }
+      )
+    }
+
+    const masterData = await loadMasterData(clientFolderId)
+    if (!masterData) {
+      return NextResponse.json(
+        { success: false, error: 'マスターデータがありません' },
+        { status: 404 }
+      )
+    }
+
+    const idx = masterData.cycles.findIndex(c => c.id === id && c.entity_id === entityId)
+    if (idx === -1) {
+      return NextResponse.json(
+        { success: false, error: 'サイクルが見つかりません' },
+        { status: 404 }
+      )
+    }
+
+    masterData.cycles.splice(idx, 1)
+    await saveMasterData(masterData, clientFolderId)
+
+    return NextResponse.json({ success: true, data: null })
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { success: false, error: '認証が必要です' },
+        { status: 401 }
+      )
+    }
+    if (error instanceof Error && error.message === 'Forbidden') {
+      return NextResponse.json(
+        { success: false, error: 'アクセス権限がありません' },
+        { status: 403 }
+      )
+    }
+    console.error('Delete cycle error:', error)
+    return NextResponse.json(
+      { success: false, error: 'サイクルの削除に失敗しました' },
       { status: 500 }
     )
   }

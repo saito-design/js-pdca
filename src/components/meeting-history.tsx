@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { History, ChevronDown, ChevronUp, CheckCircle, PlayCircle, PauseCircle, Circle, ListTodo, Save, Edit3 } from 'lucide-react'
-import type { PdcaCycle, PdcaStatus } from '@/lib/types'
+import { History, ChevronDown, ChevronUp, CheckCircle, PlayCircle, PauseCircle, Circle, ListTodo, Save, Edit3, Trash2 } from 'lucide-react'
+import type { PdcaCycle, PdcaStatus, FieldLabels } from '@/lib/types'
+import { DEFAULT_FIELD_LABELS } from '@/lib/types'
 import { parseTextWithTasks } from '@/lib/task-utils'
 
 const STATUS_CONFIG: Record<PdcaStatus, { label: string; color: string; icon: typeof Circle }> = {
@@ -16,6 +17,8 @@ interface MeetingHistoryProps {
   cycles: PdcaCycle[]
   loading?: boolean
   onUpdateCycle?: (cycle: PdcaCycle) => Promise<void>
+  onDeleteCycle?: (cycleId: string) => Promise<void>
+  fieldLabels?: FieldLabels
 }
 
 // タスクをハイライト表示するコンポーネント
@@ -51,12 +54,16 @@ interface CycleCardProps {
   cycle: PdcaCycle
   defaultExpanded?: boolean
   onUpdate?: (cycle: PdcaCycle) => Promise<void>
+  onDelete?: (cycleId: string) => Promise<void>
+  fieldLabels?: FieldLabels
 }
 
-function CycleCard({ cycle, defaultExpanded = false, onUpdate }: CycleCardProps) {
+function CycleCard({ cycle, defaultExpanded = false, onUpdate, onDelete, fieldLabels }: CycleCardProps) {
+  const labels = fieldLabels || DEFAULT_FIELD_LABELS
   const [expanded, setExpanded] = useState(defaultExpanded)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [editData, setEditData] = useState({
     situation: cycle.situation,
     issue: cycle.issue,
@@ -120,7 +127,7 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate }: CycleCardProps)
             {config.label}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {expanded && onUpdate && !editing && (
             <button
               onClick={(e) => { e.stopPropagation(); setEditing(true) }}
@@ -128,6 +135,25 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate }: CycleCardProps)
               title="編集"
             >
               <Edit3 size={14} />
+            </button>
+          )}
+          {onDelete && !editing && (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation()
+                if (!confirm(`${formatDate(cycle.cycle_date)} のミーティングを削除しますか？`)) return
+                setDeleting(true)
+                try {
+                  await onDelete(cycle.id)
+                } finally {
+                  setDeleting(false)
+                }
+              }}
+              disabled={deleting}
+              className="text-gray-400 hover:text-red-500 p-1 disabled:opacity-50"
+              title="削除"
+            >
+              <Trash2 size={14} />
             </button>
           )}
           {expanded ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
@@ -162,7 +188,7 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate }: CycleCardProps)
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-blue-600 mb-1 block">現状（S）</label>
+                    <label className="text-xs font-semibold text-blue-600 mb-1 block">{labels.situation}</label>
                     <textarea
                       value={editData.situation}
                       onChange={(e) => setEditData(prev => ({ ...prev, situation: e.target.value }))}
@@ -170,7 +196,7 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate }: CycleCardProps)
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-orange-600 mb-1 block">課題</label>
+                    <label className="text-xs font-semibold text-orange-600 mb-1 block">{labels.issue}</label>
                     <textarea
                       value={editData.issue}
                       onChange={(e) => setEditData(prev => ({ ...prev, issue: e.target.value }))}
@@ -178,7 +204,7 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate }: CycleCardProps)
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-green-600 mb-1 block">アクション / タスク</label>
+                    <label className="text-xs font-semibold text-green-600 mb-1 block">{labels.action}</label>
                     <textarea
                       value={editData.action}
                       onChange={(e) => setEditData(prev => ({ ...prev, action: e.target.value }))}
@@ -186,7 +212,7 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate }: CycleCardProps)
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-purple-600 mb-1 block">目標（T）</label>
+                    <label className="text-xs font-semibold text-purple-600 mb-1 block">{labels.target}</label>
                     <textarea
                       value={editData.target}
                       onChange={(e) => setEditData(prev => ({ ...prev, target: e.target.value }))}
@@ -218,7 +244,7 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate }: CycleCardProps)
               <div className="grid grid-cols-2 gap-3">
                 {/* Situation */}
                 <div className="bg-white rounded-lg p-3 border">
-                  <div className="text-xs font-semibold text-blue-600 mb-1">現状（S）</div>
+                  <div className="text-xs font-semibold text-blue-600 mb-1">{labels.situation}</div>
                   <div className="text-sm text-gray-700 whitespace-pre-wrap">
                     {cycle.situation || <span className="text-gray-400">-</span>}
                   </div>
@@ -226,7 +252,7 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate }: CycleCardProps)
 
                 {/* Issue (課題) */}
                 <div className="bg-white rounded-lg p-3 border">
-                  <div className="text-xs font-semibold text-orange-600 mb-1">課題</div>
+                  <div className="text-xs font-semibold text-orange-600 mb-1">{labels.issue}</div>
                   <div className="text-sm text-gray-700 whitespace-pre-wrap">
                     {cycle.issue || <span className="text-gray-400">-</span>}
                   </div>
@@ -236,7 +262,7 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate }: CycleCardProps)
                 <div className="bg-white rounded-lg p-3 border">
                   <div className="text-xs font-semibold text-green-600 mb-1 flex items-center gap-1">
                     <ListTodo size={12} />
-                    アクション / タスク
+                    {labels.action}
                   </div>
                   <div className="text-sm text-gray-700">
                     {cycle.action ? (
@@ -249,7 +275,7 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate }: CycleCardProps)
 
                 {/* Target */}
                 <div className="bg-white rounded-lg p-3 border">
-                  <div className="text-xs font-semibold text-purple-600 mb-1">目標（T）</div>
+                  <div className="text-xs font-semibold text-purple-600 mb-1">{labels.target}</div>
                   <div className="text-sm text-gray-700 whitespace-pre-wrap">
                     {cycle.target || <span className="text-gray-400">-</span>}
                   </div>
@@ -263,7 +289,7 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate }: CycleCardProps)
   )
 }
 
-export function MeetingHistory({ cycles, loading, onUpdateCycle }: MeetingHistoryProps) {
+export function MeetingHistory({ cycles, loading, onUpdateCycle, onDeleteCycle, fieldLabels }: MeetingHistoryProps) {
   // 日付降順でソート
   const sortedCycles = [...cycles].sort(
     (a, b) => new Date(b.cycle_date).getTime() - new Date(a.cycle_date).getTime()
@@ -304,6 +330,8 @@ export function MeetingHistory({ cycles, loading, onUpdateCycle }: MeetingHistor
               cycle={cycle}
               defaultExpanded={index === 0}
               onUpdate={onUpdateCycle}
+              onDelete={onDeleteCycle}
+              fieldLabels={fieldLabels}
             />
           ))}
         </div>
