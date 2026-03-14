@@ -1,4 +1,4 @@
-import { Client, Entity, PdcaCycle, PdcaIssue } from '@/lib/types'
+import { Client, Entity, PdcaCycle, PdcaIssue, FieldLabels } from '@/lib/types'
 import {
   getPdcaFolderId,
   loadJsonFromFolder,
@@ -16,6 +16,7 @@ export interface MasterData {
   updated_at: string
   issues: (PdcaIssue & { entity_name?: string; date?: string })[]
   cycles: PdcaCycle[]
+  fieldLabels?: Record<string, FieldLabels>  // entityId → FieldLabels
 }
 
 // Google Driveからクライアント一覧を読み込む
@@ -176,7 +177,8 @@ export function extractTasksFromAction(action: string): string[] {
 // サイクルのアクションから新規タスクを抽出してissuesに追加
 export function extractAndAddTasksFromCycle(
   masterData: MasterData,
-  cycle: PdcaCycle
+  cycle: PdcaCycle,
+  entityName?: string
 ): number {
   const tasks = extractTasksFromAction(cycle.action)
   if (tasks.length === 0) return 0
@@ -191,6 +193,7 @@ export function extractAndAddTasksFromCycle(
         id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         client_id: cycle.client_id,
         entity_id: cycle.entity_id || '',
+        entity_name: entityName || '',
         title: taskTitle,
         status: 'open',
         date: cycle.cycle_date,

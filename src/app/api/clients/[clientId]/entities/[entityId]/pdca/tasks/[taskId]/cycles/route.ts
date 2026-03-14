@@ -6,6 +6,7 @@ import {
   getClientFolderId,
   loadMasterData,
   saveMasterData,
+  loadEntities,
   extractAndAddTasksFromCycle,
 } from '@/lib/entity-helpers'
 
@@ -144,18 +145,23 @@ export async function POST(
       updated_at: new Date().toISOString(),
     }
 
-    const masterData = await loadMasterData(clientFolderId) || {
+    const [masterData, entities] = await Promise.all([
+      loadMasterData(clientFolderId),
+      loadEntities(clientFolderId),
+    ])
+    const entityName = entities.find(e => e.id === entityId)?.name || ''
+    const data = masterData || {
       version: '1.0',
       updated_at: '',
       issues: [],
       cycles: [],
     }
-    masterData.cycles.push(newCycle)
+    data.cycles.push(newCycle)
 
     // アクション内の【】タスクを自動抽出してissuesに追加
-    extractAndAddTasksFromCycle(masterData, newCycle)
+    extractAndAddTasksFromCycle(data, newCycle, entityName)
 
-    await saveMasterData(masterData, clientFolderId)
+    await saveMasterData(data, clientFolderId)
 
     return NextResponse.json({
       success: true,
@@ -226,7 +232,10 @@ export async function PATCH(
       )
     }
 
-    const masterData = await loadMasterData(clientFolderId)
+    const [masterData, entities] = await Promise.all([
+      loadMasterData(clientFolderId),
+      loadEntities(clientFolderId),
+    ])
     if (!masterData) {
       return NextResponse.json(
         { success: false, error: 'マスターデータがありません' },
@@ -234,6 +243,7 @@ export async function PATCH(
       )
     }
 
+    const entityName = entities.find(e => e.id === entityId)?.name || ''
     const idx = masterData.cycles.findIndex((c) => c.id === id && c.issue_id === taskId)
 
     if (idx === -1) {
@@ -253,7 +263,7 @@ export async function PATCH(
 
     // アクションが更新された場合、新規タスクを抽出
     if (action !== undefined) {
-      extractAndAddTasksFromCycle(masterData, masterData.cycles[idx])
+      extractAndAddTasksFromCycle(masterData, masterData.cycles[idx], entityName)
     }
 
     await saveMasterData(masterData, clientFolderId)

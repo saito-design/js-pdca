@@ -5,6 +5,7 @@ import { isDriveConfigured } from '@/lib/drive'
 import {
   getClientFolderId,
   loadMasterData,
+  loadEntities,
 } from '@/lib/entity-helpers'
 
 type RouteParams = {
@@ -39,14 +40,20 @@ export async function GET(
       )
     }
 
-    const masterData = await loadMasterData(clientFolderId)
+    const [masterData, entities] = await Promise.all([
+      loadMasterData(clientFolderId),
+      loadEntities(clientFolderId),
+    ])
     const issues = masterData?.issues || []
+
+    // entity_id → entity_name のマップ
+    const entityNameMap = new Map(entities.map(e => [e.id, e.name]))
 
     // issuesをTask形式に変換
     const tasks: Task[] = issues.map(issue => ({
       id: issue.id,
       client_id: issue.client_id,
-      entity_name: issue.entity_name || '',
+      entity_name: issue.entity_name || entityNameMap.get(issue.entity_id) || '',
       title: issue.title,
       status: issue.status,
       date: issue.date || issue.created_at.split('T')[0],
