@@ -154,7 +154,13 @@ export default function DashboardPage({ params }: PageProps) {
         const tasksRes = await fetch(`/api/clients/${clientId}/entities/${entityId}/tasks`)
         const tasksData = await tasksRes.json()
         if (tasksData.success) {
-          setTasks(tasksData.data)
+          // pendingTaskChanges がある場合はそのステータスを優先（上書き防止）
+          const fetched: Task[] = tasksData.data
+          setTasks(fetched.map(t =>
+            pendingTaskChanges.has(t.id)
+              ? { ...t, status: pendingTaskChanges.get(t.id)! }
+              : t
+          ))
         }
         alert('保存しました')
       } else {
@@ -191,7 +197,13 @@ export default function DashboardPage({ params }: PageProps) {
         const tasksRes = await fetch(`/api/clients/${clientId}/entities/${entityId}/tasks`)
         const tasksData = await tasksRes.json()
         if (tasksData.success) {
-          setTasks(tasksData.data)
+          // pendingTaskChanges がある場合はそのステータスを優先（上書き防止）
+          const fetched: Task[] = tasksData.data
+          setTasks(fetched.map(t =>
+            pendingTaskChanges.has(t.id)
+              ? { ...t, status: pendingTaskChanges.get(t.id)! }
+              : t
+          ))
         }
       } else {
         alert('更新に失敗しました: ' + result.error)
