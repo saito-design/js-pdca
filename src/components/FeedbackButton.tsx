@@ -16,7 +16,18 @@ function decodeToken(token: string): { role: string; exp: number } | null {
 }
 
 export function FeedbackButton({ appId, appName, tokenKey }: Props) {
-  const [role, setRole] = useState<string | null>(null)
+  const [role, setRole] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const urlToken = new URLSearchParams(window.location.search).get('auth_token')
+    if (urlToken) {
+      const d = decodeToken(urlToken)
+      if (d && d.exp > Date.now()) return d.role
+    }
+    const stored = sessionStorage.getItem(tokenKey)
+    if (!stored) return null
+    const d = decodeToken(stored)
+    return d && d.exp > Date.now() ? d.role : null
+  })
   const [open, setOpen] = useState(false)
   const [category, setCategory] = useState<'system' | 'config'>('config')
   const [content, setContent] = useState('')
