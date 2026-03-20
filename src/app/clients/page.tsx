@@ -621,7 +621,7 @@ export default function ClientsPage() {
             <div className="flex flex-col gap-3 mt-6">
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText('C:\\Users\\yasuh\\OneDrive\\デスクトップ\\APP\\PDCA\\scripts\\run_convert.bat')
+                  navigator.clipboard.writeText('C:\\dev\\PDCA\\scripts\\run_convert.bat')
                   alert('パスをコピーしました。エクスプローラーのアドレスバーに貼り付けてEnterを押してください。')
                 }}
                 className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"

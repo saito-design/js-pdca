@@ -10,6 +10,7 @@ import { PdcaEditor } from '@/components/pdca-editor'
 import { MeetingHistory } from '@/components/meeting-history'
 import { ReportExportButton } from '@/components/report-export-button'
 import { TaskManager } from '@/components/task-manager'
+import { FeedbackButton } from '@/components/FeedbackButton'
 
 type PageProps = {
   params: Promise<{ clientId: string; entityId: string }>
@@ -321,6 +322,7 @@ export default function DashboardPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <FeedbackButton appId="pdca" appName="PDCAダッシュボード" tokenKey="auth_junestry" />
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">

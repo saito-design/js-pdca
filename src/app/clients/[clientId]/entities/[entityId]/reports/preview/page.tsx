@@ -3,7 +3,8 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Printer, ArrowLeft } from 'lucide-react'
-import type { Client, Entity, Task, PdcaCycle, PdcaStatus } from '@/lib/types'
+import type { Client, Entity, Task, PdcaCycle, PdcaStatus, FieldLabels } from '@/lib/types'
+import { DEFAULT_FIELD_LABELS } from '@/lib/types'
 
 type PageProps = {
   params: Promise<{ clientId: string; entityId: string }>
@@ -24,6 +25,7 @@ export default function ReportPreviewPage({ params }: PageProps) {
   const [entity, setEntity] = useState<Entity | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [latestCycle, setLatestCycle] = useState<PdcaCycle | null>(null)
+  const [fieldLabels, setFieldLabels] = useState<FieldLabels>(DEFAULT_FIELD_LABELS)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -56,6 +58,17 @@ export default function ReportPreviewPage({ params }: PageProps) {
         const tasksData = await tasksRes.json()
         if (tasksData.success) {
           setTasks(tasksData.data)
+        }
+
+        // ラベル設定
+        try {
+          const settingsRes = await fetch(`/api/clients/${clientId}/entities/${entityId}/settings`)
+          const settingsData = await settingsRes.json()
+          if (settingsData.success && settingsData.data?.fieldLabels) {
+            setFieldLabels(settingsData.data.fieldLabels)
+          }
+        } catch {
+          // デフォルトを使用
         }
 
         // 最新サイクル
@@ -211,25 +224,25 @@ export default function ReportPreviewPage({ params }: PageProps) {
                 <ul className="space-y-2 text-sm text-gray-700 ml-4">
                   {latestCycle.situation && (
                     <li className="flex">
-                      <span className="font-semibold text-blue-700 w-20 shrink-0">現状:</span>
+                      <span className="font-semibold text-blue-700 w-28 shrink-0">{fieldLabels.situation}:</span>
                       <span className="whitespace-pre-wrap">{latestCycle.situation}</span>
                     </li>
                   )}
                   {latestCycle.issue && (
                     <li className="flex">
-                      <span className="font-semibold text-orange-600 w-20 shrink-0">課題:</span>
+                      <span className="font-semibold text-orange-600 w-28 shrink-0">{fieldLabels.issue}:</span>
                       <span className="whitespace-pre-wrap">{latestCycle.issue}</span>
                     </li>
                   )}
                   {latestCycle.action && (
                     <li className="flex">
-                      <span className="font-semibold text-green-700 w-20 shrink-0">アクション:</span>
+                      <span className="font-semibold text-green-700 w-28 shrink-0">{fieldLabels.action}:</span>
                       <span className="whitespace-pre-wrap">{latestCycle.action}</span>
                     </li>
                   )}
                   {latestCycle.target && (
                     <li className="flex">
-                      <span className="font-semibold text-purple-700 w-20 shrink-0">目標:</span>
+                      <span className="font-semibold text-purple-700 w-28 shrink-0">{fieldLabels.target}:</span>
                       <span className="whitespace-pre-wrap">{latestCycle.target}</span>
                     </li>
                   )}

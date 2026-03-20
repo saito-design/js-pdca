@@ -6,6 +6,7 @@ import { ChevronLeft, LogOut, BarChart3, FileText } from 'lucide-react'
 import type { Client, Entity, SessionData, PdcaIssue, Task } from '@/lib/types'
 import { OverviewGrid } from '@/components/overview-grid'
 import { OverviewPdcaSummary } from '@/components/overview-pdca-summary'
+import { FeedbackButton } from '@/components/FeedbackButton'
 
 // デモ用KPIデータ（将来的にはAPIから取得）
 const demoEntityKpis: { entityId: string; entityName: string; kpis: { name: string; actual: number; target: number; trend: 'up' | 'down' | 'flat' }[] }[] = []
@@ -144,6 +145,7 @@ export default function OverviewPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <FeedbackButton appId="pdca" appName="PDCAダッシュボード" tokenKey="auth_junestry" />
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">

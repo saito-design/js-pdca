@@ -2,8 +2,10 @@
 
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { Store, ChevronLeft, LogOut, LayoutDashboard, Eye, Plus, FileText, Pencil, Trash2, ChevronUp, ChevronDown, RefreshCw, Database, Home } from 'lucide-react'
+import { Store, ChevronLeft, LogOut, LayoutDashboard, Eye, Plus, FileText, Pencil, Trash2, ChevronUp, ChevronDown, Home } from 'lucide-react'
 import type { Entity, Client, SessionData } from '@/lib/types'
+import { StoreFilter, buildStoreMap } from '@/components/store-filter'
+import type { StoreMeta, ManagerMapping } from '@/components/store-filter'
 
 const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'
 
@@ -27,19 +29,27 @@ export default function EntitiesPage({ params }: PageProps) {
   const [updating, setUpdating] = useState(false)
   const [deletingEntity, setDeletingEntity] = useState<Entity | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [dataInfo, setDataInfo] = useState<{
-    fileName: string | null
-    driveFileModifiedTime: string | null
-    hasDataSource: boolean
-  } | null>(null)
-  const [refreshingData, setRefreshingData] = useState(false)
   const [fromPortal, setFromPortal] = useState(false)
+  // ジュネストリー用フィルター
+  const [storeMap, setStoreMap] = useState<Map<string, StoreMeta>>(new Map())
+  const [managers, setManagers] = useState<ManagerMapping[]>([])
+  const [filteredEntityIds, setFilteredEntityIds] = useState<string[] | null>(null)
+  const [isPortalReadOnly, setIsPortalReadOnly] = useState(false)
 
   useEffect(() => {
     // ポータルから来たかチェック
     const portalToken = sessionStorage.getItem('auth_junestry')
     if (portalToken) {
       setFromPortal(true)
+      // portalトークンからroleを判定（manager/staffは閲覧のみ）
+      try {
+        const decoded = JSON.parse(atob(portalToken))
+        if (decoded.role === 'manager' || decoded.role === 'staff') {
+          setIsPortalReadOnly(true)
+        }
+      } catch {
+        // 無効なトークンは無視
+      }
     }
     fetchData()
   }, [clientId])
@@ -74,12 +84,28 @@ export default function EntitiesPage({ params }: PageProps) {
       }
       setEntities(entitiesData.data)
 
-      // データソース情報取得
-      const infoRes = await fetch(`/api/clients/${clientId}/info`)
-      const infoData = await infoRes.json()
-      if (infoData.success) {
-        setDataInfo(infoData.data)
+      // ジュネストリーの場合: 店舗マスタ・マネジャー設定を取得してフィルター用データを構築
+      if (clientId === 'client-junestry') {
+        try {
+          const [storesRes, managersRes] = await Promise.all([
+            fetch('/api/junestry/stores'),
+            fetch('/api/junestry/managers'),
+          ])
+          const storesData = await storesRes.json()
+          const managersData = await managersRes.json()
+
+          if (storesData.success && storesData.data) {
+            const map = buildStoreMap(entitiesData.data, storesData.data)
+            setStoreMap(map)
+          }
+          if (managersData.success && managersData.data) {
+            setManagers(managersData.data)
+          }
+        } catch {
+          // フィルターデータ取得失敗は無視（フィルターなしで表示）
+        }
       }
+
     } catch {
       setError('データの取得に失敗しました')
     } finally {
@@ -268,59 +294,18 @@ export default function EntitiesPage({ params }: PageProps) {
 
       {/* Main */}
       <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* データソース情報 */}
-        {dataInfo && (
-          <div className="bg-white rounded-xl shadow p-4 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-100 p-2 rounded-lg">
-                  <Database className="text-blue-600" size={20} />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-gray-700">
-                    {dataInfo.hasDataSource ? (
-                      <>データファイル: {dataInfo.fileName}</>
-                    ) : (
-                      <span className="text-gray-400">データソース未設定</span>
-                    )}
-                  </div>
-                  {dataInfo.driveFileModifiedTime && (
-                    <div className="text-xs text-gray-500">
-                      更新日時: {new Date(dataInfo.driveFileModifiedTime).toLocaleString('ja-JP')}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={async () => {
-                  setRefreshingData(true)
-                  try {
-                    await fetch(`/api/clients/${clientId}/data/refresh`, { method: 'POST' })
-                    await fetchData()
-                  } finally {
-                    setRefreshingData(false)
-                  }
-                }}
-                disabled={refreshingData}
-                className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                <RefreshCw size={14} className={refreshingData ? 'animate-spin' : ''} />
-                {refreshingData ? '更新中...' : 'データ更新'}
-              </button>
-            </div>
-          </div>
-        )}
-
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold">部署/店舗を選択</h2>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-            >
-              <Plus size={16} />
-              追加
-            </button>
+            {!isPortalReadOnly && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+              >
+                <Plus size={16} />
+                追加
+              </button>
+            )}
             <button
               onClick={handleOverview}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
@@ -338,6 +323,16 @@ export default function EntitiesPage({ params }: PageProps) {
           </div>
         </div>
 
+        {/* ジュネストリー用フィルター */}
+        {clientId === 'client-junestry' && storeMap.size > 0 && (
+          <StoreFilter
+            entities={entities}
+            storeMap={storeMap}
+            managers={managers}
+            onFilter={setFilteredEntityIds}
+          />
+        )}
+
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-4">
             {error}
@@ -345,7 +340,10 @@ export default function EntitiesPage({ params }: PageProps) {
         )}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {entities.map((entity, index) => (
+          {(filteredEntityIds
+            ? entities.filter(e => filteredEntityIds.includes(e.id))
+            : entities
+          ).map((entity, index) => (
             <div
               key={entity.id}
               className="bg-white rounded-xl shadow p-6 hover:shadow-md transition-shadow"
@@ -366,47 +364,54 @@ export default function EntitiesPage({ params }: PageProps) {
                     </div>
                   </div>
                 </button>
-                {/* 操作ボタン（縦並び） */}
-                <div className="flex flex-col gap-0.5">
-                  <button
-                    onClick={(e) => handleMoveEntity(index, 'up', e)}
-                    disabled={index === 0}
-                    className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded disabled:opacity-30"
-                    title="上に移動"
-                  >
-                    <ChevronUp size={14} />
-                  </button>
-                  <button
-                    onClick={(e) => handleMoveEntity(index, 'down', e)}
-                    disabled={index === entities.length - 1}
-                    className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded disabled:opacity-30"
-                    title="下に移動"
-                  >
-                    <ChevronDown size={14} />
-                  </button>
-                  <button
-                    onClick={(e) => openEditModal(entity, e)}
-                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                    title="名前を変更"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button
-                    onClick={(e) => openDeleteModal(entity, e)}
-                    className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
-                    title="削除"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+                {/* 操作ボタン（縦並び）- 閲覧専用時は非表示 */}
+                {!isPortalReadOnly && (
+                  <div className="flex flex-col gap-0.5">
+                    <button
+                      onClick={(e) => handleMoveEntity(index, 'up', e)}
+                      disabled={index === 0}
+                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded disabled:opacity-30"
+                      title="上に移動"
+                    >
+                      <ChevronUp size={14} />
+                    </button>
+                    <button
+                      onClick={(e) => handleMoveEntity(index, 'down', e)}
+                      disabled={index === entities.length - 1}
+                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded disabled:opacity-30"
+                      title="下に移動"
+                    >
+                      <ChevronDown size={14} />
+                    </button>
+                    <button
+                      onClick={(e) => openEditModal(entity, e)}
+                      className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                      title="名前を変更"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={(e) => openDeleteModal(entity, e)}
+                      className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                      title="削除"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        {entities.length === 0 && !error && (
+        {entities.length === 0 && !error && !filteredEntityIds && (
           <div className="text-center text-gray-500 py-12">
             表示できる部署/店舗がありません
+          </div>
+        )}
+        {filteredEntityIds && filteredEntityIds.length === 0 && (
+          <div className="text-center text-gray-500 py-12">
+            条件に一致する店舗がありません
           </div>
         )}
       </main>

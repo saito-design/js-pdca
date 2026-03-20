@@ -9,6 +9,7 @@ export interface PortalSession {
   role: 'owner' | 'manager' | 'staff'
   company: string
   exp: number
+  storeId?: string  // 権限2(店長)/権限3(一般社員)の場合に正式店番が入る
 }
 
 /**
@@ -25,9 +26,7 @@ export function getPortalAuth(): PortalSession | null {
     try {
       const payload = JSON.parse(atob(token)) as PortalSession
       if (payload.exp > Date.now()) {
-        // トークンが有効なら sessionStorage に保存
         sessionStorage.setItem('portal_auth', token)
-        // URLからトークンを削除（履歴に残さない）
         const url = new URL(window.location.href)
         url.searchParams.delete('auth_token')
         window.history.replaceState({}, '', url.toString())
@@ -55,24 +54,27 @@ export function getPortalAuth(): PortalSession | null {
   return null
 }
 
-/**
- * ポータル認証済みかどうか
- */
 export function isPortalAuthenticated(): boolean {
   return getPortalAuth() !== null
 }
 
-/**
- * ポータルセッションをクリア
- */
 export function clearPortalAuth(): void {
   sessionStorage.removeItem('portal_auth')
 }
 
-/**
- * owner権限かどうか
- */
+/** owner権限（マネジャー）かどうか */
 export function isOwner(): boolean {
-  const auth = getPortalAuth()
-  return auth?.role === 'owner'
+  return getPortalAuth()?.role === 'owner'
+}
+
+/** 店長以上（owner or manager）かどうか */
+export function isManagerOrAbove(): boolean {
+  const role = getPortalAuth()?.role
+  return role === 'owner' || role === 'manager'
+}
+
+/** 店舗アカウント（manager or staff）かどうか */
+export function isStoreAccount(): boolean {
+  const role = getPortalAuth()?.role
+  return role === 'manager' || role === 'staff'
 }
