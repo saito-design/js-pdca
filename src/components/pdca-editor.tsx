@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Save, Sparkles, ChevronDown, ChevronUp, CheckSquare, Square } from 'lucide-react'
 import { extractTaskStrings } from '@/lib/task-utils'
+import type { FieldLabels } from '@/lib/types'
+import { DEFAULT_FIELD_LABELS } from '@/lib/types'
 
 interface PdcaData {
   situation: string
@@ -16,17 +18,25 @@ interface PdcaEditorProps {
   initialData?: PdcaData
   onSave?: (data: PdcaData) => void
   storageKey?: string // localStorage用のキー
+  fieldLabels?: FieldLabels
 }
 
-const FIELDS = [
-  { key: 'situation', label: '現状（S）', placeholder: '現在の状況を記入...', rows: 2 },
-  { key: 'issue', label: '課題', placeholder: '課題・問題点を記入...', rows: 2 },
-  { key: 'action', label: 'アクション（A）', placeholder: '具体的な施策を記入...\n【タスク名】と書くとタスク一覧に表示されます', rows: 4 },
-  { key: 'target', label: '目標（T）', placeholder: '達成目標を記入...', rows: 2 },
-] as const
+const DEFAULT_PLACEHOLDERS = {
+  situation: '現在の状況を記入...',
+  issue: '課題・問題点を記入...',
+  action: '具体的な施策を記入...\n【タスク名】と書くとタスク一覧に表示されます',
+  target: '達成目標を記入...',
+}
+
+const FIELD_ROWS = {
+  situation: 2,
+  issue: 2,
+  action: 4,
+  target: 2,
+}
 
 
-export function PdcaEditor({ issueTitle, initialData, onSave, storageKey }: PdcaEditorProps) {
+export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldLabels }: PdcaEditorProps) {
   const localStorageKey = storageKey || 'pdca-draft'
 
   // localStorageから下書きを読み込む
@@ -85,6 +95,14 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey }: Pdca
   // アクション欄からタスクを抽出
   const tasks = useMemo(() => extractTaskStrings(data.action), [data.action])
 
+  const labels = fieldLabels || DEFAULT_FIELD_LABELS
+  const fields = useMemo(() => [
+    { key: 'situation' as const, label: labels.situation, placeholder: DEFAULT_PLACEHOLDERS.situation, rows: FIELD_ROWS.situation },
+    { key: 'issue' as const, label: labels.issue, placeholder: DEFAULT_PLACEHOLDERS.issue, rows: FIELD_ROWS.issue },
+    { key: 'action' as const, label: labels.action, placeholder: DEFAULT_PLACEHOLDERS.action, rows: FIELD_ROWS.action },
+    { key: 'target' as const, label: labels.target, placeholder: DEFAULT_PLACEHOLDERS.target, rows: FIELD_ROWS.target },
+  ], [labels])
+
   const handleChange = (key: keyof PdcaData, value: string) => {
     setData((prev) => ({ ...prev, [key]: value }))
   }
@@ -131,7 +149,7 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey }: Pdca
       {/* Content */}
       {expanded && (
         <div className="p-4 space-y-4">
-          {FIELDS.map((field) => (
+          {fields.map((field) => (
             <div key={field.key}>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {field.label}

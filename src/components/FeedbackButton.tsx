@@ -11,8 +11,21 @@ interface Props {
   tokenKey: string
 }
 
+function normalizeBase64Token(token: string): string {
+  // URLクエリ/フォーム経由で base64 が壊れるケースを吸収する
+  let t = token
+  try { t = decodeURIComponent(t) } catch { /* ignore */ }
+  t = t.trim()
+  t = t.replace(/\s/g, '+')
+  t = t.replace(/-/g, '+').replace(/_/g, '/')
+  const mod = t.length % 4
+  if (mod === 2) t += '=='
+  else if (mod === 3) t += '='
+  return t
+}
+
 function decodeToken(token: string): { role: string; exp: number } | null {
-  try { return JSON.parse(atob(token)) } catch { return null }
+  try { return JSON.parse(atob(normalizeBase64Token(token))) } catch { return null }
 }
 
 export function FeedbackButton({ appId, appName, tokenKey }: Props) {

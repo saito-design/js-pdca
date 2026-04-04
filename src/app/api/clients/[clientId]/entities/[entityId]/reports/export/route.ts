@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { saveFile, ensureFolder, isDriveConfigured } from '@/lib/drive'
-import { ApiResponse, PdcaIssue, PdcaCycle, Entity, Client } from '@/lib/types'
+import { ApiResponse, PdcaIssue, PdcaCycle, Entity, Client, FieldLabels, DEFAULT_FIELD_LABELS } from '@/lib/types'
 import {
   loadClients,
   loadEntities,
@@ -18,6 +18,7 @@ interface ReportData {
   entity: Entity
   issues: (PdcaIssue & { cycles: PdcaCycle[] })[]
   generatedAt: string
+  fieldLabels: FieldLabels
 }
 
 // レポートをマークダウン形式で生成
@@ -47,22 +48,22 @@ function generateMarkdownReport(data: ReportData): string {
         lines.push(`### ${cycle.cycle_date} (${getStatusLabel(cycle.status)})`)
         lines.push(``)
         if (cycle.situation) {
-          lines.push(`**現状 (S)**`)
+          lines.push(`**${data.fieldLabels.situation}**`)
           lines.push(cycle.situation)
           lines.push(``)
         }
         if (cycle.issue) {
-          lines.push(`**課題 (I)**`)
+          lines.push(`**${data.fieldLabels.issue}**`)
           lines.push(cycle.issue)
           lines.push(``)
         }
         if (cycle.action) {
-          lines.push(`**アクション (A)**`)
+          lines.push(`**${data.fieldLabels.action}**`)
           lines.push(cycle.action)
           lines.push(``)
         }
         if (cycle.target) {
-          lines.push(`**目標 (T)**`)
+          lines.push(`**${data.fieldLabels.target}**`)
           lines.push(cycle.target)
           lines.push(``)
         }
@@ -164,12 +165,16 @@ export async function POST(
         .sort((a, b) => new Date(b.cycle_date).getTime() - new Date(a.cycle_date).getTime()),
     }))
 
+    // ラベル設定を取得
+    const fieldLabels = masterData?.fieldLabels?.[entityId] || DEFAULT_FIELD_LABELS
+
     // レポート生成
     const reportData: ReportData = {
       client,
       entity,
       issues: issuesWithCycles,
       generatedAt: new Date().toISOString(),
+      fieldLabels,
     }
 
     const markdown = generateMarkdownReport(reportData)

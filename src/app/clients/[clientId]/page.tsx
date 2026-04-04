@@ -37,8 +37,8 @@ export default function EntitiesPage({ params }: PageProps) {
   const [isPortalReadOnly, setIsPortalReadOnly] = useState(false)
 
   useEffect(() => {
-    // ポータルから来たかチェック
-    const portalToken = sessionStorage.getItem('auth_junestry')
+    // ポータルから来たかチェック（複数企業対応）
+    const portalToken = sessionStorage.getItem('auth_junestry') || sessionStorage.getItem('auth_maripala')
     if (portalToken) {
       setFromPortal(true)
       // portalトークンからroleを判定（manager/staffは閲覧のみ）
@@ -271,11 +271,7 @@ export default function EntitiesPage({ params }: PageProps) {
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{user?.name}</span>
             <button
-              onClick={() => {
-                window.close()
-                // フォールバック: 閉じられない場合はポータルへ遷移
-                setTimeout(() => { window.location.href = PORTAL_URL }, 100)
-              }}
+              onClick={() => { window.location.href = PORTAL_URL }}
               className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-800"
             >
               <Home size={16} />

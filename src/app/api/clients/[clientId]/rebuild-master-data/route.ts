@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireClientAccess } from '@/lib/auth'
 import { ApiResponse, PdcaIssue, PdcaCycle, Task } from '@/lib/types'
 import { isDriveConfigured, loadJsonFromFolder, saveJsonToFolder } from '@/lib/drive'
-import { getClientFolderId, loadEntities } from '@/lib/entity-helpers'
+import { getClientFolderId, loadEntities, getEntityFolderId } from '@/lib/entity-helpers'
 
 const PDCA_ISSUES_FILENAME = 'pdca-issues.json'
 const PDCA_CYCLES_FILENAME = 'pdca-cycles.json'
 const TASKS_FILENAME = 'tasks.json'
+const CYCLES_FILENAME = 'cycles.json'
 const MASTER_DATA_FILENAME = 'master-data.json'
 
 type RouteParams = {
@@ -56,66 +57,125 @@ export async function POST(
       )
     }
 
-    // エンティティ一覧を取得（entity_name解決用）
+    // エンティティ一覧を取得
     const entities = await loadEntities(clientFolderId)
     const entityMap = new Map(entities.map(e => [e.id, e.name]))
 
-    // 既存の3ファイルを読み込む
-    let pdcaIssues: PdcaIssue[] = []
-    let pdcaCycles: PdcaCycle[] = []
-    let tasks: Task[] = []
+    const allIssues: (PdcaIssue & { entity_name?: string; date?: string })[] = []
+    const allCycles: PdcaCycle[] = []
 
+    // === 1. 旧形式フラットファイルからの読み込み ===
     try {
       const issuesResult = await loadJsonFromFolder<PdcaIssue[]>(PDCA_ISSUES_FILENAME, clientFolderId)
-      pdcaIssues = issuesResult?.data || []
-    } catch (e) {
-      console.warn('pdca-issues.json読み込みスキップ:', e)
-    }
+      if (issuesResult?.data) {
+        for (const issue of issuesResult.data) {
+          allIssues.push({
+            ...issue,
+            entity_name: entityMap.get(issue.entity_id) || '',
+          })
+        }
+      }
+    } catch { /* skip */ }
 
     try {
       const cyclesResult = await loadJsonFromFolder<PdcaCycle[]>(PDCA_CYCLES_FILENAME, clientFolderId)
-      pdcaCycles = cyclesResult?.data || []
-    } catch (e) {
-      console.warn('pdca-cycles.json読み込みスキップ:', e)
-    }
+      if (cyclesResult?.data) {
+        allCycles.push(...cyclesResult.data)
+      }
+    } catch { /* skip */ }
 
+    // 旧tasksからentity_name/dateを補完
+    let legacyTasks: Task[] = []
     try {
       const tasksResult = await loadJsonFromFolder<Task[]>(TASKS_FILENAME, clientFolderId)
-      tasks = tasksResult?.data || []
-    } catch (e) {
-      console.warn('tasks.json読み込みスキップ:', e)
+      legacyTasks = tasksResult?.data || []
+    } catch { /* skip */ }
+
+    const taskMap = new Map(legacyTasks.map(t => [t.id, { entity_name: t.entity_name, date: t.date }]))
+    for (const issue of allIssues) {
+      const taskInfo = taskMap.get(issue.id)
+      if (taskInfo) {
+        if (!issue.entity_name) issue.entity_name = taskInfo.entity_name
+        if (!issue.date) issue.date = taskInfo.date
+      }
+      if (!issue.date) issue.date = issue.created_at?.split('T')[0] || ''
     }
 
-    // tasksからentity_nameとdateを取得するマップを作成
-    const taskMap = new Map(tasks.map(t => [t.id, { entity_name: t.entity_name, date: t.date }]))
+    // === 2. 部門サブフォルダからの読み込み ===
+    for (const entity of entities) {
+      try {
+        const entityFolderId = await getEntityFolderId(clientFolderId, entity.id)
+        if (!entityFolderId) continue
 
-    // issuesにentity_nameとdateを追加
-    const enrichedIssues = pdcaIssues.map(issue => {
-      const taskInfo = taskMap.get(issue.id)
-      return {
-        ...issue,
-        entity_name: taskInfo?.entity_name || entityMap.get(issue.entity_id) || '',
-        date: taskInfo?.date || issue.created_at.split('T')[0],
+        // tasks.json
+        try {
+          const tasksResult = await loadJsonFromFolder<(PdcaIssue & { entity_name?: string; date?: string })[]>(
+            TASKS_FILENAME, entityFolderId
+          )
+          if (tasksResult?.data) {
+            for (const task of tasksResult.data) {
+              allIssues.push({
+                ...task,
+                entity_id: task.entity_id || entity.id,
+                entity_name: task.entity_name || entity.name,
+                date: task.date || task.created_at?.split('T')[0] || '',
+              })
+            }
+          }
+        } catch { /* skip */ }
+
+        // cycles.json
+        try {
+          const cyclesResult = await loadJsonFromFolder<PdcaCycle[]>(CYCLES_FILENAME, entityFolderId)
+          if (cyclesResult?.data) {
+            for (const cycle of cyclesResult.data) {
+              allCycles.push({
+                ...cycle,
+                entity_id: cycle.entity_id || entity.id,
+              })
+            }
+          }
+        } catch { /* skip */ }
+      } catch (e) {
+        console.warn(`部門 ${entity.name} の読み込みスキップ:`, e)
       }
-    })
+    }
 
-    // master-data.jsonを生成
+    // === 3. 重複除去 ===
+    // Issues: entity_id + title で重複除去（新しいものを優先）
+    const issueSeen = new Map<string, typeof allIssues[0]>()
+    const issuesSorted = [...allIssues].sort(
+      (a, b) => new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime()
+    )
+    for (const issue of issuesSorted) {
+      const key = `${issue.entity_id || ''}_${issue.title}`
+      issueSeen.set(key, issue)
+    }
+    const deduplicatedIssues = Array.from(issueSeen.values())
+
+    // Cycles: id で重複除去
+    const cycleSeen = new Map<string, PdcaCycle>()
+    for (const cycle of allCycles) {
+      cycleSeen.set(cycle.id, cycle)
+    }
+    const deduplicatedCycles = Array.from(cycleSeen.values())
+
+    // === 4. master-data.json を生成・保存 ===
     const masterData: MasterData = {
       version: '1.0',
       updated_at: new Date().toISOString(),
-      issues: enrichedIssues,
-      cycles: pdcaCycles,
+      issues: deduplicatedIssues,
+      cycles: deduplicatedCycles,
     }
 
-    // Google Driveに保存
     await saveJsonToFolder(masterData, MASTER_DATA_FILENAME, clientFolderId)
 
     return NextResponse.json({
       success: true,
       data: {
-        issuesCount: enrichedIssues.length,
-        cyclesCount: pdcaCycles.length,
-        message: `master-data.json を生成しました（issues: ${enrichedIssues.length}件, cycles: ${pdcaCycles.length}件）`,
+        issuesCount: deduplicatedIssues.length,
+        cyclesCount: deduplicatedCycles.length,
+        message: `master-data.json を再構築しました（issues: ${deduplicatedIssues.length}件, cycles: ${deduplicatedCycles.length}件, 部門: ${entities.length}）`,
       },
     })
   } catch (error) {

@@ -6,10 +6,22 @@ import { AlertTriangle } from 'lucide-react'
 
 const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'
 
+function normalizeBase64Token(token: string): string {
+  let t = token
+  try { t = decodeURIComponent(t) } catch { /* ignore */ }
+  t = t.trim()
+  t = t.replace(/\s/g, '+')
+  t = t.replace(/-/g, '+').replace(/_/g, '/')
+  const mod = t.length % 4
+  if (mod === 2) t += '=='
+  else if (mod === 3) t += '='
+  return t
+}
+
 // 認証トークンをデコード
 function decodeToken(token: string): { role: string; company: string; exp: number } | null {
   try {
-    return JSON.parse(atob(token))
+    return JSON.parse(atob(normalizeBase64Token(token)))
   } catch {
     return null
   }

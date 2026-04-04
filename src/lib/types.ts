@@ -237,3 +237,18 @@ export interface DynamicMetric {
   unit: string     // 単位（円、人、%など）
   type: 'number' | 'string' | 'date' | 'unknown'
 }
+
+// ミーティングメモのフィールドラベル
+export interface FieldLabels {
+  situation: string  // デフォルト: "現状（S）"
+  issue: string      // デフォルト: "課題"
+  action: string     // デフォルト: "アクション（A）"
+  target: string     // デフォルト: "目標（T）"
+}
+
+export const DEFAULT_FIELD_LABELS: FieldLabels = {
+  situation: '現状（S）',
+  issue: '課題',
+  action: 'アクション（A）',
+  target: '目標（T）',
+}

@@ -123,7 +123,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     await requireAuth()
 
     const body = await request.json()
-    const { name } = body
+    const { name, id: customId } = body
 
     // バリデーション
     if (!name || typeof name !== 'string' || name.trim().length === 0 || name.length > 100) {
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       )
     }
 
-    const clientId = generateClientId()
+    const clientId = (customId && typeof customId === 'string') ? customId : generateClientId()
 
     // 企業用フォルダを作成
     const pdcaFolderId = getPdcaFolderId()
