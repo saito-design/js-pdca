@@ -37,6 +37,17 @@ export default function DashboardPage({ params }: PageProps) {
   const [editingLabels, setEditingLabels] = useState<FieldLabels>(DEFAULT_FIELD_LABELS)
   const [savingLabels, setSavingLabels] = useState(false)
 
+  // 未保存タスク変更がある場合、ページ離脱時に警告
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (pendingTaskChanges.size > 0) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [pendingTaskChanges])
+
   // 初期データ取得
   useEffect(() => {
     const fetchData = async () => {
@@ -121,6 +132,9 @@ export default function DashboardPage({ params }: PageProps) {
   }
 
   const handleBack = () => {
+    if (pendingTaskChanges.size > 0) {
+      if (!confirm('タスクの変更が保存されていません。保存せずに戻りますか？')) return
+    }
     router.push(`/clients/${clientId}`)
   }
 
@@ -255,15 +269,16 @@ export default function DashboardPage({ params }: PageProps) {
 
     setSavingTasks(true)
     try {
-      const promises = Array.from(pendingTaskChanges.entries()).map(([taskId, newStatus]) =>
-        fetch(`/api/clients/${clientId}/entities/${entityId}/tasks/${taskId}`, {
+      // Drive JSONの競合を防ぐため順次実行（並列だと後の書き込みが前を上書きする）
+      const results = []
+      for (const [taskId, newStatus] of pendingTaskChanges.entries()) {
+        const res = await fetch(`/api/clients/${clientId}/entities/${entityId}/tasks/${taskId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: newStatus }),
-        }).then(res => res.json())
-      )
-
-      const results = await Promise.all(promises)
+        })
+        results.push(await res.json())
+      }
       const allSuccess = results.every(r => r.success)
 
       if (allSuccess) {

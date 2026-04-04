@@ -271,7 +271,7 @@ export default function EntitiesPage({ params }: PageProps) {
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{user?.name}</span>
             <button
-              onClick={() => { window.location.href = PORTAL_URL }}
+              onClick={() => { window.open(PORTAL_URL, 'portal') }}
               className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-800"
             >
               <Home size={16} />
