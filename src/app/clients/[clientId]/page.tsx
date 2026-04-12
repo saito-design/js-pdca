@@ -38,18 +38,38 @@ export default function EntitiesPage({ params }: PageProps) {
 
   useEffect(() => {
     // ポータルから来たかチェック（複数企業対応）
-    const portalToken = sessionStorage.getItem('auth_junestry') || sessionStorage.getItem('auth_maripala')
-    if (portalToken) {
-      setFromPortal(true)
-      // portalトークンからroleを判定（manager/staffは閲覧のみ）
-      try {
-        const decoded = JSON.parse(atob(portalToken))
-        if (decoded.role === 'manager' || decoded.role === 'staff') {
-          setIsPortalReadOnly(true)
+    const portalKeys: Record<string, string> = {
+      'auth_junestry': 'client-junestry',
+      'auth_maripala': 'client-maripala',
+    }
+    let hasPortalToken = false
+    for (const [key, allowedClientId] of Object.entries(portalKeys)) {
+      const token = sessionStorage.getItem(key)
+      if (token) {
+        try {
+          const decoded = JSON.parse(atob(token))
+          if (decoded.exp > Date.now()) {
+            hasPortalToken = true
+            // 他社のページにはアクセスさせない
+            if (clientId !== allowedClientId) {
+              router.replace(`/clients/${allowedClientId}`)
+              return
+            }
+            setFromPortal(true)
+            if (decoded.role === 'manager' || decoded.role === 'staff') {
+              setIsPortalReadOnly(true)
+            }
+          } else {
+            sessionStorage.removeItem(key)
+          }
+        } catch {
+          sessionStorage.removeItem(key)
         }
-      } catch {
-        // 無効なトークンは無視
+        break
       }
+    }
+    if (!hasPortalToken) {
+      // ポータルを経由していない直アクセス → そのまま管理者として表示
     }
     fetchData()
   }, [clientId])

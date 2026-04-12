@@ -43,6 +43,26 @@ export default function ClientsPage() {
   const [showScriptGuide, setShowScriptGuide] = useState<string | null>(null)
 
   useEffect(() => {
+    // ポータルから来たユーザーは企業一覧を見せず、自社ページへリダイレクト
+    const portalCompanyMap: Record<string, string> = {
+      'auth_junestry': '/clients/client-junestry',
+      'auth_maripala': '/clients/client-maripala',
+    }
+    for (const [key, path] of Object.entries(portalCompanyMap)) {
+      const token = sessionStorage.getItem(key)
+      if (token) {
+        try {
+          const decoded = JSON.parse(atob(token))
+          if (decoded.exp > Date.now()) {
+            router.replace(path)
+            return
+          }
+          sessionStorage.removeItem(key)
+        } catch {
+          sessionStorage.removeItem(key)
+        }
+      }
+    }
     fetchData()
   }, [])
 
