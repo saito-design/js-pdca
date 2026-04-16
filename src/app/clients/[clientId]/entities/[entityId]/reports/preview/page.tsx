@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Printer, ArrowLeft } from 'lucide-react'
-import type { Client, Entity, Task, PdcaCycle, PdcaStatus, FieldLabels } from '@/lib/types'
+import { FileDown, ArrowLeft, Mail, Save } from 'lucide-react'
+import type { Client, Entity, Task, PdcaStatus, PdcaCycle, FieldLabels } from '@/lib/types'
 import { DEFAULT_FIELD_LABELS } from '@/lib/types'
 
 type PageProps = {
@@ -17,7 +17,7 @@ const STATUS_LABELS: Record<PdcaStatus, string> = {
   paused: '保留',
 }
 
-export default function ReportPreviewPage({ params }: PageProps) {
+export default function EntityReportPreviewPage({ params }: PageProps) {
   const { clientId, entityId } = use(params)
   const router = useRouter()
 
@@ -27,6 +27,60 @@ export default function ReportPreviewPage({ params }: PageProps) {
   const [latestCycle, setLatestCycle] = useState<PdcaCycle | null>(null)
   const [fieldLabels, setFieldLabels] = useState<FieldLabels>(DEFAULT_FIELD_LABELS)
   const [loading, setLoading] = useState(true)
+
+  // 保存中状態
+  const [saving, setSaving] = useState(false)
+  // 自動処理フラグ
+  const [autoProcess, setAutoProcess] = useState(false)
+
+  // メール作成
+  const openEmailClient = useCallback(() => {
+    const subject = encodeURIComponent('ミーティングメモを送ります')
+    const body = encodeURIComponent(
+      `\nお世話になっております。\n先日のミーティングメモを送ります。\nご査収くださいませ。\n\n（今回導入したツールで作成していますので、稀々ではありますがご容赦ください）\n`
+    )
+    window.location.href = `mailto:?subject=${subject}&body=${body}`
+  }, [])
+
+  // ドライブ保存
+  const saveToDrive = useCallback(async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(
+        `/api/clients/${clientId}/entities/${entityId}/reports/save-pdf`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+      const data = await res.json()
+      return data.success
+    } catch (error) {
+      console.error('Save error:', error)
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }, [clientId, entityId])
+
+  // 印刷後の自動処理
+  useEffect(() => {
+    const handleAfterPrint = async () => {
+      if (autoProcess) {
+        setAutoProcess(false)
+        await saveToDrive()
+        openEmailClient()
+      }
+    }
+    window.addEventListener('afterprint', handleAfterPrint)
+    return () => window.removeEventListener('afterprint', handleAfterPrint)
+  }, [autoProcess, saveToDrive, openEmailClient])
+
+  // PDF保存→Drive保存→メール（印刷ダイアログ経由）
+  const handlePdfAndProcess = useCallback(() => {
+    setAutoProcess(true)
+    window.print()
+  }, [])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,13 +107,6 @@ export default function ReportPreviewPage({ params }: PageProps) {
           setEntity(entitiesData.data.find((e: Entity) => e.id === entityId) || null)
         }
 
-        // タスク一覧
-        const tasksRes = await fetch(`/api/clients/${clientId}/tasks`)
-        const tasksData = await tasksRes.json()
-        if (tasksData.success) {
-          setTasks(tasksData.data)
-        }
-
         // ラベル設定
         try {
           const settingsRes = await fetch(`/api/clients/${clientId}/entities/${entityId}/settings`)
@@ -71,18 +118,34 @@ export default function ReportPreviewPage({ params }: PageProps) {
           // デフォルトを使用
         }
 
-        // 最新サイクル
-        const cyclesRes = await fetch(
-          `/api/clients/${clientId}/entities/${entityId}/pdca/tasks/task-1/cycles`
-        )
-        const cyclesData = await cyclesRes.json()
-        if (cyclesData.success && cyclesData.data.length > 0) {
-          // 日付降順でソートして最新を取得
-          const sorted = [...cyclesData.data].sort(
-            (a: PdcaCycle, b: PdcaCycle) =>
-              new Date(b.cycle_date).getTime() - new Date(a.cycle_date).getTime()
+        // まとめJSONから全タスク・全サイクルを一括取得
+        const [allTasksRes, allCyclesRes] = await Promise.all([
+          fetch(`/api/clients/${clientId}/all-tasks`),
+          fetch(`/api/clients/${clientId}/all-cycles`),
+        ])
+
+        const allTasksData = await allTasksRes.json()
+        const allCyclesData = await allCyclesRes.json()
+
+        if (allTasksData.success) {
+          setTasks(allTasksData.data)
+        }
+
+        // 該当部署の最新サイクルを抽出
+        if (allCyclesData.success) {
+          const entityCycles = allCyclesData.data.filter(
+            (c: PdcaCycle) => c.entity_id === entityId
           )
-          setLatestCycle(sorted[0])
+          if (entityCycles.length > 0) {
+            const sorted = [...entityCycles].sort(
+              (a: PdcaCycle, b: PdcaCycle) => {
+                const dateDiff = new Date(b.cycle_date).getTime() - new Date(a.cycle_date).getTime()
+                if (dateDiff !== 0) return dateDiff
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              }
+            )
+            setLatestCycle(sorted[0])
+          }
         }
       } catch (error) {
         console.error('Fetch error:', error)
@@ -94,18 +157,20 @@ export default function ReportPreviewPage({ params }: PageProps) {
     fetchData()
   }, [router, clientId, entityId])
 
-  const handlePrint = () => {
-    window.print()
-  }
-
   const handleBack = () => {
     router.push(`/clients/${clientId}/entities/${entityId}/dashboard`)
   }
 
-  // この部署のタスク（完了以外）
-  const entityTasks = tasks.filter(
-    t => t.entity_name === entity?.name && t.status !== 'done'
-  )
+  // この部署の完了以外のタスク（doing最上位）
+  const entityTasks = tasks
+    .filter(t => t.entity_name === entity?.name && t.status !== 'done')
+    .sort((a, b) => {
+      if (a.status === 'doing' && b.status !== 'doing') return -1
+      if (a.status !== 'doing' && b.status === 'doing') return 1
+      return 0
+    })
+
+  const hasContent = entityTasks.length > 0 || !!latestCycle
 
   // 日付フォーマット
   const formatDate = (date: Date) => {
@@ -135,20 +200,36 @@ export default function ReportPreviewPage({ params }: PageProps) {
           <ArrowLeft size={20} />
           戻る
         </button>
-        <button
-          onClick={handlePrint}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          <Printer size={20} />
-          印刷 / PDF保存
-        </button>
+
+        <div className="flex items-center gap-2">
+          {/* メール作成のみ */}
+          <button
+            onClick={openEmailClient}
+            className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+          >
+            <Mail size={20} />
+            メールのみ
+          </button>
+
+          {/* PDF保存→Drive保存→メール（一括処理） */}
+          <button
+            onClick={handlePdfAndProcess}
+            disabled={saving}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            <FileDown size={20} />
+            <Save size={16} />
+            <Mail size={16} />
+            {saving ? '保存中...' : 'PDF → 保存 → メール'}
+          </button>
+        </div>
       </div>
 
       {/* レポート本体 */}
       <div className="bg-gray-100 min-h-screen print:bg-white print:min-h-0">
         <div className="max-w-[210mm] mx-auto bg-white shadow-lg print:shadow-none">
           {/* A4用紙スタイル */}
-          <div className="p-[20mm] min-h-[297mm] print:p-[15mm]" style={{ fontFamily: '"Noto Sans JP", "Hiragino Sans", sans-serif' }}>
+          <div className="p-[20mm] print:p-[15mm]" style={{ fontFamily: '"Noto Sans JP", "Hiragino Sans", sans-serif' }}>
 
             {/* ヘッダー */}
             <div className="mb-8">
@@ -172,86 +253,81 @@ export default function ReportPreviewPage({ params }: PageProps) {
               </h1>
             </div>
 
-            {/* 進行中タスク */}
-            {entityTasks.length > 0 && (
-              <section className="mb-8">
-                <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <span className="w-1 h-6 bg-blue-600 inline-block"></span>
-                  進行中タスク
-                  <span className="bg-blue-100 text-blue-700 text-sm font-normal px-2 py-0.5 rounded-full ml-2">
-                    {entityTasks.length}件
-                  </span>
-                </h2>
-                <div className="space-y-2">
-                  {entityTasks.map(task => (
-                    <div
-                      key={task.id}
-                      className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`w-3 h-3 rounded-full ${
-                          task.status === 'doing' ? 'bg-blue-500' :
-                          task.status === 'open' ? 'bg-gray-400' :
-                          task.status === 'paused' ? 'bg-yellow-500' : 'bg-green-500'
-                        }`}></span>
-                        <span className="text-sm font-medium">{task.title}</span>
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        task.status === 'doing' ? 'bg-blue-100 text-blue-700' :
-                        task.status === 'open' ? 'bg-gray-100 text-gray-600' :
-                        task.status === 'paused' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
-                      }`}>
-                        {STATUS_LABELS[task.status]}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* 今回の議題 */}
-            {latestCycle && (latestCycle.situation || latestCycle.issue || latestCycle.action || latestCycle.target) && (
-              <section className="mb-8">
+            {/* 部署セクション */}
+            {hasContent && entity && (
+              <section className="mb-8 pb-6">
                 <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                   <span className="w-1 h-6 bg-green-600 inline-block"></span>
-                  ミーティング内容
-                  <span className="text-sm font-normal text-gray-500 ml-2">
-                    ({latestCycle.cycle_date})
-                  </span>
+                  {entity.name}
                 </h2>
 
-                {/* 箇条書き形式 */}
-                <ul className="space-y-2 text-sm text-gray-700 ml-4">
-                  {latestCycle.situation && (
-                    <li className="flex">
-                      <span className="font-semibold text-blue-700 w-28 shrink-0">{fieldLabels.situation}:</span>
-                      <span className="whitespace-pre-wrap">{latestCycle.situation}</span>
-                    </li>
-                  )}
-                  {latestCycle.issue && (
-                    <li className="flex">
-                      <span className="font-semibold text-orange-600 w-28 shrink-0">{fieldLabels.issue}:</span>
-                      <span className="whitespace-pre-wrap">{latestCycle.issue}</span>
-                    </li>
-                  )}
-                  {latestCycle.action && (
-                    <li className="flex">
-                      <span className="font-semibold text-green-700 w-28 shrink-0">{fieldLabels.action}:</span>
-                      <span className="whitespace-pre-wrap">{latestCycle.action}</span>
-                    </li>
-                  )}
-                  {latestCycle.target && (
-                    <li className="flex">
-                      <span className="font-semibold text-purple-700 w-28 shrink-0">{fieldLabels.target}:</span>
-                      <span className="whitespace-pre-wrap">{latestCycle.target}</span>
-                    </li>
-                  )}
-                </ul>
+                {/* 今回の議題（PDCAサイクル）を箇条書きで表示 */}
+                {latestCycle && (latestCycle.situation || latestCycle.issue || latestCycle.action || latestCycle.target) && (
+                  <div className="mb-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                      ミーティング内容 ({latestCycle.cycle_date})
+                    </h3>
+                    <ul className="space-y-1 text-sm text-gray-700 ml-4">
+                      {latestCycle.situation && (
+                        <li className="flex">
+                          <span className="font-semibold text-blue-700 w-28 shrink-0">{fieldLabels.situation}:</span>
+                          <span className="whitespace-pre-wrap">{latestCycle.situation}</span>
+                        </li>
+                      )}
+                      {latestCycle.issue && (
+                        <li className="flex">
+                          <span className="font-semibold text-orange-600 w-28 shrink-0">{fieldLabels.issue}:</span>
+                          <span className="whitespace-pre-wrap">{latestCycle.issue}</span>
+                        </li>
+                      )}
+                      {latestCycle.action && (
+                        <li className="flex">
+                          <span className="font-semibold text-green-700 w-28 shrink-0">{fieldLabels.action}:</span>
+                          <span className="whitespace-pre-wrap">{latestCycle.action}</span>
+                        </li>
+                      )}
+                      {latestCycle.target && (
+                        <li className="flex">
+                          <span className="font-semibold text-purple-700 w-28 shrink-0">{fieldLabels.target}:</span>
+                          <span className="whitespace-pre-wrap">{latestCycle.target}</span>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+                {/* 進行中タスク */}
+                {entityTasks.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                      進行中タスク ({entityTasks.length}件)
+                    </h3>
+                    <ul className="space-y-1 text-sm text-gray-700 ml-4">
+                      {entityTasks.map(task => (
+                        <li key={task.id} className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${
+                            task.status === 'doing' ? 'bg-blue-500' :
+                            task.status === 'open' ? 'bg-gray-400' :
+                            task.status === 'paused' ? 'bg-yellow-500' : 'bg-green-500'
+                          }`}></span>
+                          <span>{task.title}</span>
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${
+                            task.status === 'doing' ? 'bg-blue-100 text-blue-700' :
+                            task.status === 'open' ? 'bg-gray-100 text-gray-600' :
+                            task.status === 'paused' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+                          }`}>
+                            {STATUS_LABELS[task.status]}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </section>
             )}
 
             {/* データがない場合 */}
-            {!latestCycle && entityTasks.length === 0 && (
+            {!hasContent && (
               <div className="text-center text-gray-500 py-10">
                 出力するデータがありません
               </div>
@@ -266,7 +342,7 @@ export default function ReportPreviewPage({ params }: PageProps) {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 0;
+            margin: 15mm;
           }
           body {
             -webkit-print-color-adjust: exact;
