@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { Save, Sparkles, ChevronDown, ChevronUp, CheckSquare, Square } from 'lucide-react'
+import { Save, ChevronDown, ChevronUp, CheckSquare, Square } from 'lucide-react'
 import { extractTaskStrings } from '@/lib/task-utils'
 import type { FieldLabels } from '@/lib/types'
 import { DEFAULT_FIELD_LABELS } from '@/lib/types'
@@ -222,14 +222,6 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldL
             >
               <Save size={16} />
               {saving ? '保存中...' : '保存'}
-            </button>
-            <button
-              className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-xl font-medium hover:bg-gray-50"
-              title="AI提案（将来機能）"
-              disabled
-            >
-              <Sparkles size={16} />
-              Act生成
             </button>
             {lastSaved && (
               <span className="text-xs text-gray-400 ml-2">

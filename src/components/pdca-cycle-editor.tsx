@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Save, Sparkles, Calendar } from 'lucide-react'
+import { Save, Calendar } from 'lucide-react'
 import type { PdcaCycle, PdcaStatus } from '@/lib/types'
 
 interface PdcaCycleEditorProps {
@@ -148,14 +148,6 @@ export function PdcaCycleEditor({ cycle, issueTitle, onSave, onStatusChange }: P
           >
             <Save size={16} />
             {saving ? '保存中...' : cycle ? '更新' : '作成'}
-          </button>
-          <button
-            className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-xl font-medium hover:bg-gray-50 disabled:opacity-50"
-            title="AI提案（将来機能）"
-            disabled
-          >
-            <Sparkles size={16} />
-            Act生成
           </button>
         </div>
       </div>
