@@ -105,7 +105,7 @@ export async function POST(
       )
     }
 
-    const { cycle_date, situation, issue, action, target, status } = body
+    const { cycle_date, situation, issue, action, target, customValues, status } = body
 
     // バリデーション
     if (!cycle_date) {
@@ -140,6 +140,7 @@ export async function POST(
       issue: issue || '',
       action: action || '',
       target: target || '',
+      customValues: customValues && typeof customValues === 'object' ? customValues : undefined,
       status: (status as PdcaStatus) || 'open',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -215,7 +216,7 @@ export async function PATCH(
       )
     }
 
-    const { id, situation, issue, action, target, status } = body
+    const { id, situation, issue, action, target, customValues, status } = body
 
     if (!id) {
       return NextResponse.json(
@@ -258,6 +259,7 @@ export async function PATCH(
     if (issue !== undefined) masterData.cycles[idx].issue = issue
     if (action !== undefined) masterData.cycles[idx].action = action
     if (target !== undefined) masterData.cycles[idx].target = target
+    if (customValues !== undefined) masterData.cycles[idx].customValues = customValues
     if (status !== undefined) masterData.cycles[idx].status = status
     masterData.cycles[idx].updated_at = new Date().toISOString()
 

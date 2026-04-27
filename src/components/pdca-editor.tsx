@@ -11,6 +11,7 @@ interface PdcaData {
   issue: string
   action: string
   target: string
+  customValues?: Record<string, string>
 }
 
 interface PdcaEditorProps {
@@ -21,20 +22,21 @@ interface PdcaEditorProps {
   fieldLabels?: FieldLabels
 }
 
-const DEFAULT_PLACEHOLDERS = {
-  situation: '現在の状況を記入...',
-  issue: '課題・問題点を記入...',
+const DEFAULT_PLACEHOLDERS: Record<string, string> = {
+  situation: '目標（またはタスク）に対する進捗と、実施したこと',
+  issue: '目標（またはタスク）に対する未実施内容および、今後実施する必要があること',
   action: '具体的な施策を記入...\n【タスク名】と書くとタスク一覧に表示されます',
-  target: '達成目標を記入...',
+  target: '数値など具体的な目標および期間',
 }
 
-const FIELD_ROWS = {
+const FIELD_ROWS: Record<string, number> = {
   situation: 2,
   issue: 2,
   action: 4,
   target: 2,
 }
 
+const EMPTY_DATA: PdcaData = { situation: '', issue: '', action: '', target: '', customValues: {} }
 
 export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldLabels }: PdcaEditorProps) {
   const localStorageKey = storageKey || 'pdca-draft'
@@ -42,7 +44,7 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldL
   // localStorageから下書きを読み込む
   const loadDraft = useCallback((): PdcaData => {
     if (typeof window === 'undefined') {
-      return initialData || { situation: '', issue: '', action: '', target: '' }
+      return initialData || EMPTY_DATA
     }
     try {
       const saved = localStorage.getItem(localStorageKey)
@@ -56,7 +58,7 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldL
     } catch {
       // 無視
     }
-    return initialData || { situation: '', issue: '', action: '', target: '' }
+    return initialData || EMPTY_DATA
   }, [initialData, localStorageKey])
 
   const [data, setData] = useState<PdcaData>(loadDraft)
@@ -67,14 +69,16 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldL
   // 初回マウント時に下書きを読み込む
   useEffect(() => {
     const draft = loadDraft()
-    if (draft.situation || draft.issue || draft.action || draft.target) {
+    if (draft.situation || draft.issue || draft.action || draft.target ||
+      (draft.customValues && Object.values(draft.customValues).some(v => v))) {
       setData(draft)
     }
   }, [loadDraft])
 
   // 入力変更時に自動で下書き保存（デバウンス）
   useEffect(() => {
-    const hasContent = data.situation || data.issue || data.action || data.target
+    const hasContent = data.situation || data.issue || data.action || data.target ||
+      (data.customValues && Object.values(data.customValues).some(v => v))
     if (!hasContent) return
 
     const timer = setTimeout(() => {
@@ -96,15 +100,24 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldL
   const tasks = useMemo(() => extractTaskStrings(data.action), [data.action])
 
   const labels = fieldLabels || DEFAULT_FIELD_LABELS
-  const fields = useMemo(() => [
+  const customFields = labels.customFields || []
+
+  const baseFields = useMemo(() => [
     { key: 'situation' as const, label: labels.situation, placeholder: DEFAULT_PLACEHOLDERS.situation, rows: FIELD_ROWS.situation },
     { key: 'issue' as const, label: labels.issue, placeholder: DEFAULT_PLACEHOLDERS.issue, rows: FIELD_ROWS.issue },
     { key: 'action' as const, label: labels.action, placeholder: DEFAULT_PLACEHOLDERS.action, rows: FIELD_ROWS.action },
     { key: 'target' as const, label: labels.target, placeholder: DEFAULT_PLACEHOLDERS.target, rows: FIELD_ROWS.target },
   ], [labels])
 
-  const handleChange = (key: keyof PdcaData, value: string) => {
-    setData((prev) => ({ ...prev, [key]: value }))
+  const handleChange = (key: string, value: string) => {
+    if (['situation', 'issue', 'action', 'target'].includes(key)) {
+      setData(prev => ({ ...prev, [key]: value }))
+    } else {
+      setData(prev => ({
+        ...prev,
+        customValues: { ...(prev.customValues || {}), [key]: value },
+      }))
+    }
   }
 
   // 下書きをクリア
@@ -124,7 +137,7 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldL
       // 保存成功したら下書きをクリア
       clearDraft()
       // フォームをリセット
-      setData({ situation: '', issue: '', action: '', target: '' })
+      setData({ ...EMPTY_DATA })
     } finally {
       setSaving(false)
     }
@@ -149,7 +162,8 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldL
       {/* Content */}
       {expanded && (
         <div className="p-4 space-y-4">
-          {fields.map((field) => (
+          {/* 基本4項目 */}
+          {baseFields.map((field) => (
             <div key={field.key}>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {field.label}
@@ -160,6 +174,22 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldL
                 placeholder={field.placeholder}
                 value={data[field.key]}
                 onChange={(e) => handleChange(field.key, e.target.value)}
+              />
+            </div>
+          ))}
+
+          {/* カスタム項目 */}
+          {customFields.map((cf) => (
+            <div key={cf.key}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {cf.label}
+              </label>
+              <textarea
+                className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                style={{ minHeight: '4.5rem' }}
+                placeholder={`${cf.label}を記入...`}
+                value={data.customValues?.[cf.key] || ''}
+                onChange={(e) => handleChange(cf.key, e.target.value)}
               />
             </div>
           ))}

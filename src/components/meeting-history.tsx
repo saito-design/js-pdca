@@ -50,6 +50,14 @@ function ActionWithTasks({ text }: { text: string }) {
   )
 }
 
+const CUSTOM_FIELD_COLORS = [
+  'text-teal-600',
+  'text-indigo-600',
+  'text-rose-600',
+  'text-amber-600',
+  'text-cyan-600',
+]
+
 interface CycleCardProps {
   cycle: PdcaCycle
   defaultExpanded?: boolean
@@ -60,6 +68,7 @@ interface CycleCardProps {
 
 function CycleCard({ cycle, defaultExpanded = false, onUpdate, onDelete, fieldLabels }: CycleCardProps) {
   const labels = fieldLabels || DEFAULT_FIELD_LABELS
+  const customFields = labels.customFields || []
   const [expanded, setExpanded] = useState(defaultExpanded)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -69,6 +78,7 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate, onDelete, fieldLa
     issue: cycle.issue,
     action: cycle.action,
     target: cycle.target,
+    customValues: { ...(cycle.customValues || {}) },
     status: cycle.status,
   })
 
@@ -94,6 +104,7 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate, onDelete, fieldLa
         issue: editData.issue,
         action: editData.action,
         target: editData.target,
+        customValues: editData.customValues,
         status: editData.status,
       })
       setEditing(false)
@@ -108,10 +119,16 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate, onDelete, fieldLa
       issue: cycle.issue,
       action: cycle.action,
       target: cycle.target,
+      customValues: { ...(cycle.customValues || {}) },
       status: cycle.status,
     })
     setEditing(false)
   }
+
+  // カスタム項目のうち値があるもの（表示モード用）
+  const activeCustomFields = customFields.filter(cf =>
+    cycle.customValues?.[cf.key]
+  )
 
   return (
     <div className="border rounded-xl overflow-hidden bg-white">
@@ -219,6 +236,20 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate, onDelete, fieldLa
                       className="w-full border rounded-lg p-2 text-sm min-h-[80px]"
                     />
                   </div>
+                  {/* カスタム項目の編集 */}
+                  {customFields.map((cf, i) => (
+                    <div key={cf.key}>
+                      <label className={`text-xs font-semibold ${CUSTOM_FIELD_COLORS[i % CUSTOM_FIELD_COLORS.length]} mb-1 block`}>{cf.label}</label>
+                      <textarea
+                        value={editData.customValues[cf.key] || ''}
+                        onChange={(e) => setEditData(prev => ({
+                          ...prev,
+                          customValues: { ...prev.customValues, [cf.key]: e.target.value },
+                        }))}
+                        className="w-full border rounded-lg p-2 text-sm min-h-[80px]"
+                      />
+                    </div>
+                  ))}
                 </div>
 
                 {/* 保存・キャンセルボタン */}
@@ -241,44 +272,56 @@ function CycleCard({ cycle, defaultExpanded = false, onUpdate, onDelete, fieldLa
               </div>
             ) : (
               /* 表示モード */
-              <div className="grid grid-cols-2 gap-3">
-                {/* Situation */}
-                <div className="bg-white rounded-lg p-3 border">
-                  <div className="text-xs font-semibold text-blue-600 mb-1">{labels.situation}</div>
-                  <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {cycle.situation || <span className="text-gray-400">-</span>}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Situation */}
+                  <div className="bg-white rounded-lg p-3 border">
+                    <div className="text-xs font-semibold text-blue-600 mb-1">{labels.situation}</div>
+                    <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {cycle.situation || <span className="text-gray-400">-</span>}
+                    </div>
                   </div>
-                </div>
 
-                {/* Issue (課題) */}
-                <div className="bg-white rounded-lg p-3 border">
-                  <div className="text-xs font-semibold text-orange-600 mb-1">{labels.issue}</div>
-                  <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {cycle.issue || <span className="text-gray-400">-</span>}
+                  {/* Issue (課題) */}
+                  <div className="bg-white rounded-lg p-3 border">
+                    <div className="text-xs font-semibold text-orange-600 mb-1">{labels.issue}</div>
+                    <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {cycle.issue || <span className="text-gray-400">-</span>}
+                    </div>
                   </div>
-                </div>
 
-                {/* Action with Tasks */}
-                <div className="bg-white rounded-lg p-3 border">
-                  <div className="text-xs font-semibold text-green-600 mb-1 flex items-center gap-1">
-                    <ListTodo size={12} />
-                    {labels.action}
+                  {/* Action with Tasks */}
+                  <div className="bg-white rounded-lg p-3 border">
+                    <div className="text-xs font-semibold text-green-600 mb-1 flex items-center gap-1">
+                      <ListTodo size={12} />
+                      {labels.action}
+                    </div>
+                    <div className="text-sm text-gray-700">
+                      {cycle.action ? (
+                        <ActionWithTasks text={cycle.action} />
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-700">
-                    {cycle.action ? (
-                      <ActionWithTasks text={cycle.action} />
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </div>
-                </div>
 
-                {/* Target */}
-                <div className="bg-white rounded-lg p-3 border">
-                  <div className="text-xs font-semibold text-purple-600 mb-1">{labels.target}</div>
-                  <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {cycle.target || <span className="text-gray-400">-</span>}
+                  {/* Target */}
+                  <div className="bg-white rounded-lg p-3 border">
+                    <div className="text-xs font-semibold text-purple-600 mb-1">{labels.target}</div>
+                    <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {cycle.target || <span className="text-gray-400">-</span>}
+                    </div>
                   </div>
+
+                  {/* カスタム項目（値があるもの） */}
+                  {activeCustomFields.map((cf, i) => (
+                    <div key={cf.key} className="bg-white rounded-lg p-3 border">
+                      <div className={`text-xs font-semibold ${CUSTOM_FIELD_COLORS[i % CUSTOM_FIELD_COLORS.length]} mb-1`}>{cf.label}</div>
+                      <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {cycle.customValues?.[cf.key] || <span className="text-gray-400">-</span>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

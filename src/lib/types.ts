@@ -165,6 +165,7 @@ export interface PdcaCycle {
   issue: string
   action: string
   target: string
+  customValues?: Record<string, string>  // カスタム項目の値（後方互換: undefinedなら空）
   status: PdcaStatus
   created_at: string
   updated_at: string
@@ -239,11 +240,17 @@ export interface DynamicMetric {
 }
 
 // ミーティングメモのフィールドラベル
+export interface CustomFieldDef {
+  key: string   // "custom-{timestamp}" 形式
+  label: string
+}
+
 export interface FieldLabels {
   situation: string  // デフォルト: "現状（S）"
   issue: string      // デフォルト: "課題"
   action: string     // デフォルト: "アクション（A）"
   target: string     // デフォルト: "目標（T）"
+  customFields?: CustomFieldDef[]  // カスタム項目（後方互換: undefinedなら0件）
 }
 
 export const DEFAULT_FIELD_LABELS: FieldLabels = {

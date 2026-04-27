@@ -30,6 +30,7 @@ export default function EntitiesPage({ params }: PageProps) {
   const [deletingEntity, setDeletingEntity] = useState<Entity | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [fromPortal, setFromPortal] = useState(false)
+  const [portalRoleName, setPortalRoleName] = useState<string | null>(null)
   // ジュネストリー用フィルター
   const [storeMap, setStoreMap] = useState<Map<string, StoreMeta>>(new Map())
   const [managers, setManagers] = useState<ManagerMapping[]>([])
@@ -40,7 +41,7 @@ export default function EntitiesPage({ params }: PageProps) {
     // ポータルから来たかチェック（複数企業対応）
     const portalKeys: Record<string, string> = {
       'auth_junestry': 'client-junestry',
-      'auth_maripala': 'client-maripala',
+      'auth_maripala': 'client-mlqgs0vx-lpyp',
     }
     let hasPortalToken = false
     for (const [key, allowedClientId] of Object.entries(portalKeys)) {
@@ -56,7 +57,9 @@ export default function EntitiesPage({ params }: PageProps) {
               return
             }
             setFromPortal(true)
-            if (decoded.role === 'manager' || decoded.role === 'staff') {
+            const roleNames: Record<string, string> = { owner: 'オーナー', manager: 'マネジャー', staff: 'スタッフ' }
+            setPortalRoleName(roleNames[decoded.role] || decoded.role)
+            if (decoded.role === 'staff') {
               setIsPortalReadOnly(true)
             }
           } else {
@@ -289,7 +292,7 @@ export default function EntitiesPage({ params }: PageProps) {
             <h1 className="text-xl font-bold">{client?.name || 'PDCA Dashboard'}</h1>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">{user?.name}</span>
+            <span className="text-sm text-gray-600">{portalRoleName || user?.name}</span>
             <button
               onClick={() => { window.open(PORTAL_URL, 'portal') }}
               className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-800"

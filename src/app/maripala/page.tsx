@@ -7,7 +7,7 @@ import { AlertTriangle } from 'lucide-react'
 const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || 'https://js-portal-kagoshima.vercel.app'
 const COMPANY_ID = 'maripala'
 const SESSION_KEY = 'auth_maripala'
-const CLIENT_ID = 'client-maripala'
+const CLIENT_ID = 'client-mlqgs0vx-lpyp'
 
 function normalizeBase64Token(token: string): string {
   let t = token

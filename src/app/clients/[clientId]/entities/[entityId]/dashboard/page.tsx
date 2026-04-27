@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, LogOut, Save, Settings2, X } from 'lucide-react'
+import { ChevronLeft, LogOut, Save, Settings2, X, Plus, Trash2 } from 'lucide-react'
 import type { SessionData, Client, Entity, PdcaCycle, Task, PdcaStatus } from '@/lib/types'
 import type { FieldLabels } from '@/lib/types'
 import { DEFAULT_FIELD_LABELS } from '@/lib/types'
@@ -36,6 +36,21 @@ export default function DashboardPage({ params }: PageProps) {
   const [showLabelEditor, setShowLabelEditor] = useState(false)
   const [editingLabels, setEditingLabels] = useState<FieldLabels>(DEFAULT_FIELD_LABELS)
   const [savingLabels, setSavingLabels] = useState(false)
+  const [portalRoleName, setPortalRoleName] = useState<string | null>(null)
+
+  // ポータル経由時はロール名を取得
+  useEffect(() => {
+    const token = sessionStorage.getItem('auth_junestry') || sessionStorage.getItem('auth_maripala')
+    if (token) {
+      try {
+        const decoded = JSON.parse(atob(token))
+        if (decoded.exp > Date.now()) {
+          const roleNames: Record<string, string> = { owner: 'オーナー', manager: 'マネジャー', staff: 'スタッフ' }
+          setPortalRoleName(roleNames[decoded.role] || decoded.role)
+        }
+      } catch { /* ignore */ }
+    }
+  }, [])
 
   // 未保存タスク変更がある場合、ページ離脱時に警告
   useEffect(() => {
@@ -138,7 +153,7 @@ export default function DashboardPage({ params }: PageProps) {
     router.push(`/clients/${clientId}`)
   }
 
-  const handleSavePdca = async (data: { situation: string; issue: string; action: string; target: string }) => {
+  const handleSavePdca = async (data: { situation: string; issue: string; action: string; target: string; customValues?: Record<string, string> }) => {
     try {
       const res = await fetch(
         `/api/clients/${clientId}/entities/${entityId}/pdca/tasks/task-1/cycles`,
@@ -151,6 +166,7 @@ export default function DashboardPage({ params }: PageProps) {
             issue: data.issue,
             action: data.action,
             target: data.target,
+            customValues: data.customValues || {},
             status: 'open',
           }),
         }
@@ -201,6 +217,7 @@ export default function DashboardPage({ params }: PageProps) {
             issue: cycle.issue,
             action: cycle.action,
             target: cycle.target,
+            customValues: cycle.customValues || {},
             status: cycle.status,
           }),
         }
@@ -356,7 +373,7 @@ export default function DashboardPage({ params }: PageProps) {
           </div>
           <div className="flex items-center gap-4">
             <ReportExportButton clientId={clientId} entityId={entityId} />
-            <span className="text-sm text-gray-600">{user?.name}</span>
+            <span className="text-sm text-gray-600">{portalRoleName || user?.name}</span>
             <button
               onClick={handleLogout}
               className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
@@ -456,14 +473,14 @@ export default function DashboardPage({ params }: PageProps) {
       {/* ラベル編集モーダル */}
       {showLabelEditor && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-96">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-[28rem] max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold">ラベル設定</h3>
               <button onClick={() => setShowLabelEditor(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
-            <p className="text-xs text-gray-500 mb-4">ミーティングメモの4つのタイトルを変更できます</p>
+            <p className="text-xs text-gray-500 mb-4">ミーティングメモの項目タイトルを変更・追加できます</p>
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-semibold text-blue-600 mb-1 block">現状ラベル</label>
@@ -505,6 +522,58 @@ export default function DashboardPage({ params }: PageProps) {
                   placeholder={DEFAULT_FIELD_LABELS.target}
                 />
               </div>
+
+              {/* カスタム項目 */}
+              {(editingLabels.customFields || []).length > 0 && (
+                <div className="border-t pt-3 mt-3">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">カスタム項目</p>
+                  {(editingLabels.customFields || []).map((cf) => (
+                    <div key={cf.key} className="flex items-center gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={cf.label}
+                        onChange={(e) => {
+                          const newLabel = e.target.value
+                          setEditingLabels(prev => ({
+                            ...prev,
+                            customFields: (prev.customFields || []).map(f =>
+                              f.key === cf.key ? { ...f, label: newLabel } : f
+                            ),
+                          }))
+                        }}
+                        className="flex-1 border rounded-lg p-2 text-sm"
+                        placeholder="項目名を入力"
+                      />
+                      <button
+                        onClick={() => {
+                          setEditingLabels(prev => ({
+                            ...prev,
+                            customFields: (prev.customFields || []).filter(f => f.key !== cf.key),
+                          }))
+                        }}
+                        className="text-gray-400 hover:text-red-500 p-1"
+                        title="削除"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  const newKey = `custom-${Date.now()}`
+                  setEditingLabels(prev => ({
+                    ...prev,
+                    customFields: [...(prev.customFields || []), { key: newKey, label: '' }],
+                  }))
+                }}
+                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 mt-2"
+              >
+                <Plus size={14} />
+                項目を追加
+              </button>
             </div>
             <div className="flex items-center justify-between mt-6">
               <button

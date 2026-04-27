@@ -46,7 +46,7 @@ export default function ClientsPage() {
     // ポータルから来たユーザーは企業一覧を見せず、自社ページへリダイレクト
     const portalCompanyMap: Record<string, string> = {
       'auth_junestry': '/clients/client-junestry',
-      'auth_maripala': '/clients/client-maripala',
+      'auth_maripala': '/clients/client-mlqgs0vx-lpyp',
     }
     for (const [key, path] of Object.entries(portalCompanyMap)) {
       const token = sessionStorage.getItem(key)
