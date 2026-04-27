@@ -41,7 +41,6 @@ interface ClientStats {
   entityCount: number
   issueCount: number
   cycleCount: number
-  chartCount: number
 }
 
 export async function GET(
@@ -84,7 +83,6 @@ export async function GET(
       entityCount: 0,
       issueCount: 0,
       cycleCount: 0,
-      chartCount: 0,
     }
 
     return NextResponse.json({

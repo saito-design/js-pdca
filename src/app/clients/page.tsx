@@ -33,7 +33,7 @@ export default function ClientsPage() {
   const [adding, setAdding] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{
     client: Client
-    stats: { entityCount: number; issueCount: number; cycleCount: number; chartCount: number }
+    stats: { entityCount: number; issueCount: number; cycleCount: number }
   } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [loadingStats, setLoadingStats] = useState(false)
@@ -518,7 +518,6 @@ export default function ClientsPage() {
                 <li>・部署/店舗: {deleteTarget.stats.entityCount} 件</li>
                 <li>・PDCAタスク: {deleteTarget.stats.issueCount} 件</li>
                 <li>・PDCAサイクル: {deleteTarget.stats.cycleCount} 件</li>
-                <li>・グラフ: {deleteTarget.stats.chartCount} 件</li>
               </ul>
             </div>
 

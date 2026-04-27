@@ -2,14 +2,10 @@
 
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, LogOut, BarChart3, FileText } from 'lucide-react'
+import { ChevronLeft, LogOut } from 'lucide-react'
 import type { Client, Entity, SessionData, PdcaIssue, Task } from '@/lib/types'
-import { OverviewGrid } from '@/components/overview-grid'
 import { OverviewPdcaSummary } from '@/components/overview-pdca-summary'
 import { FeedbackButton } from '@/components/FeedbackButton'
-
-// デモ用KPIデータ（将来的にはAPIから取得）
-const demoEntityKpis: { entityId: string; entityName: string; kpis: { name: string; actual: number; target: number; trend: 'up' | 'down' | 'flat' }[] }[] = []
 
 type PageProps = {
   params: Promise<{ clientId: string }>
@@ -55,7 +51,6 @@ export default function OverviewPage({ params }: PageProps) {
   const [entities, setEntities] = useState<Entity[]>([])
   const [issues, setIssues] = useState<PdcaIssue[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
-  const [activeTab, setActiveTab] = useState<'kpi' | 'pdca'>('pdca')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -176,46 +171,11 @@ export default function OverviewPage({ params }: PageProps) {
 
       {/* Main */}
       <main className="max-w-7xl mx-auto px-4 py-6">
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setActiveTab('kpi')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${
-              activeTab === 'kpi'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white border hover:bg-gray-50'
-            }`}
-          >
-            <BarChart3 size={16} />
-            KPI一覧
-          </button>
-          <button
-            onClick={() => setActiveTab('pdca')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${
-              activeTab === 'pdca'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white border hover:bg-gray-50'
-            }`}
-          >
-            <FileText size={16} />
-            PDCAサマリー
-          </button>
-        </div>
-
-        {/* Content */}
-        {activeTab === 'kpi' ? (
-          <OverviewGrid
-            entities={entities}
-            entityKpis={demoEntityKpis}
-            onSelectEntity={handleSelectEntity}
-          />
-        ) : (
-          <OverviewPdcaSummary
-            entities={entities}
-            summaries={pdcaSummaries}
-            onSelectEntity={handleSelectEntity}
-          />
-        )}
+        <OverviewPdcaSummary
+          entities={entities}
+          summaries={pdcaSummaries}
+          onSelectEntity={handleSelectEntity}
+        />
       </main>
     </div>
   )
