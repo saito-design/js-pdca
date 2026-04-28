@@ -47,6 +47,7 @@ export default function ClientsPage() {
     const portalCompanyMap: Record<string, string> = {
       'auth_junestry': '/clients/client-junestry',
       'auth_maripala': '/clients/client-mlqgs0vx-lpyp',
+      'auth_tottori_kyosai': '/clients/client-mloz4flk-3jld',
     }
     for (const [key, path] of Object.entries(portalCompanyMap)) {
       const token = sessionStorage.getItem(key)

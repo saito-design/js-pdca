@@ -42,6 +42,7 @@ export default function EntitiesPage({ params }: PageProps) {
     const portalKeys: Record<string, string> = {
       'auth_junestry': 'client-junestry',
       'auth_maripala': 'client-mlqgs0vx-lpyp',
+      'auth_tottori_kyosai': 'client-mloz4flk-3jld',
     }
     let hasPortalToken = false
     for (const [key, allowedClientId] of Object.entries(portalKeys)) {
