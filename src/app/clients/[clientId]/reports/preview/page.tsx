@@ -65,7 +65,10 @@ export default function CompanyReportPreviewPage({ params }: PageProps) {
 
   // 印刷後の自動処理（afterprintイベント）
   useEffect(() => {
+    const originalTitle = typeof document !== 'undefined' ? document.title : ''
     const handleAfterPrint = async () => {
+      // タイトルを元に戻す
+      if (typeof document !== 'undefined') document.title = originalTitle
       if (autoProcess) {
         setAutoProcess(false)
         // Drive保存
@@ -80,9 +83,14 @@ export default function CompanyReportPreviewPage({ params }: PageProps) {
 
   // PDF保存→Drive保存→メール（印刷ダイアログ経由）
   const handlePdfAndProcess = useCallback(() => {
+    // 印刷ダイアログのファイル名を「{企業名}様_ミーティングメモ_{YYYYMMDD}」に
+    const today = new Date()
+    const ymd = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
+    const clientName = client?.name || '企業'
+    document.title = `${clientName}様_ミーティングメモ_${ymd}`
     setAutoProcess(true)
     window.print()
-  }, [])
+  }, [client])
 
   useEffect(() => {
     const fetchData = async () => {
