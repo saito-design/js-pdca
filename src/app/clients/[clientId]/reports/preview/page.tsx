@@ -126,16 +126,20 @@ export default function CompanyReportPreviewPage({ params }: PageProps) {
         if (allCyclesData.success && entitiesData.success) {
           const cyclesMap: Record<string, PdcaCycle | null> = {}
           for (const entity of entitiesData.data) {
+            // 中身が空のサイクルは「最新」候補から除外（編集前のプレースホルダ対策）
             const entityCycles = allCyclesData.data.filter(
-              (c: PdcaCycle) => c.entity_id === entity.id
+              (c: PdcaCycle) =>
+                c.entity_id === entity.id &&
+                (c.situation || c.issue || c.action || c.target)
             )
             if (entityCycles.length > 0) {
-              // 最新のサイクルを取得
+              // cycle_date が同じ場合は updated_at の新しい方を採用
+              // （翌日 PATCH 編集した内容を反映するため。created_at だと編集が無視される）
               const sorted = [...entityCycles].sort(
                 (a: PdcaCycle, b: PdcaCycle) => {
                   const dateDiff = new Date(b.cycle_date).getTime() - new Date(a.cycle_date).getTime()
                   if (dateDiff !== 0) return dateDiff
-                  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                  return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
                 }
               )
               cyclesMap[entity.id] = sorted[0]
@@ -289,6 +293,11 @@ export default function CompanyReportPreviewPage({ params }: PageProps) {
                 })
               const latestCycle = cyclesByEntity[entity.id]
               const hasPageBreak = pageBreaks.has(entity.id)
+              // 45日以上前のサイクルは「過去」扱いで薄く表示
+              const STALE_DAYS = 45
+              const isStale = latestCycle
+                ? (Date.now() - new Date(latestCycle.cycle_date).getTime()) / 86400000 > STALE_DAYS
+                : false
 
               return (
                 <div key={entity.id}>
@@ -322,14 +331,19 @@ export default function CompanyReportPreviewPage({ params }: PageProps) {
                       hasPageBreak ? 'page-break print:break-before-page print:pt-8' : ''
                     }`}
                   >
-                    <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                      <span className="w-1 h-6 bg-green-600 inline-block"></span>
+                    <h2 className={`text-lg font-bold mb-4 flex items-center gap-2 ${isStale ? 'text-gray-400' : ''}`}>
+                      <span className={`w-1 h-6 inline-block ${isStale ? 'bg-gray-300' : 'bg-green-600'}`}></span>
                       {entity.name}
+                      {isStale && (
+                        <span className="ml-2 text-xs font-normal px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-300">
+                          過去
+                        </span>
+                      )}
                     </h2>
 
                     {/* 今回の議題（PDCAサイクル）を箇条書きで表示 */}
                     {latestCycle && (latestCycle.situation || latestCycle.issue || latestCycle.action || latestCycle.target) && (
-                      <div className="mb-4">
+                      <div className={`mb-4 ${isStale ? 'opacity-60' : ''}`}>
                         <h3 className="text-sm font-semibold text-gray-700 mb-2">
                           ミーティング内容 ({latestCycle.cycle_date})
                         </h3>
@@ -364,7 +378,7 @@ export default function CompanyReportPreviewPage({ params }: PageProps) {
 
                     {/* 進行中タスク */}
                     {entityTasks.length > 0 && (
-                      <div>
+                      <div className={isStale ? 'opacity-60' : ''}>
                         <h3 className="text-sm font-semibold text-gray-700 mb-2">
                           進行中タスク ({entityTasks.length}件)
                         </h3>
