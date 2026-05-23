@@ -11,6 +11,7 @@ import { MeetingHistory } from '@/components/meeting-history'
 import { ReportExportButton } from '@/components/report-export-button'
 import { TaskManager } from '@/components/task-manager'
 import { FeedbackButton } from '@/components/FeedbackButton'
+import { EditingLock } from '@/components/EditingLock'
 
 type PageProps = {
   params: Promise<{ clientId: string; entityId: string }>
@@ -37,8 +38,9 @@ export default function DashboardPage({ params }: PageProps) {
   const [editingLabels, setEditingLabels] = useState<FieldLabels>(DEFAULT_FIELD_LABELS)
   const [savingLabels, setSavingLabels] = useState(false)
   const [portalRoleName, setPortalRoleName] = useState<string | null>(null)
+  const [portalUserName, setPortalUserName] = useState<string | null>(null)
 
-  // ポータル経由時はロール名を取得
+  // ポータル経由時はロール名・利用者名を取得
   useEffect(() => {
     const token = sessionStorage.getItem('auth_junestry') || sessionStorage.getItem('auth_maripala') || sessionStorage.getItem('auth_marui') || sessionStorage.getItem('auth_tottori_kyosai')
     if (token) {
@@ -47,10 +49,14 @@ export default function DashboardPage({ params }: PageProps) {
         if (decoded.exp > Date.now()) {
           const roleNames: Record<string, string> = { owner: 'オーナー', manager: 'マネジャー', staff: 'スタッフ' }
           setPortalRoleName(roleNames[decoded.role] || decoded.role)
+          if (decoded.name) setPortalUserName(decoded.name)
         }
       } catch { /* ignore */ }
     }
   }, [])
+
+  // ロックUI用の利用者名（ポータル名→セッション名）
+  const lockUserName = portalUserName || user?.name || ''
 
   // 未保存タスク変更がある場合、ページ離脱時に警告
   useEffect(() => {
@@ -447,6 +453,15 @@ export default function DashboardPage({ params }: PageProps) {
           </button>
         </div>
 
+        {lockUserName && (
+          <EditingLock
+            clientId={clientId}
+            resourceType="cycle"
+            resourceId={entityId}
+            userName={lockUserName}
+            label="PDCAサイクル記入"
+          />
+        )}
         <PdcaEditor
           onSave={handleSavePdca}
           storageKey={`pdca-draft-${clientId}-${entityId}`}
@@ -463,6 +478,15 @@ export default function DashboardPage({ params }: PageProps) {
         />
 
         {/* タスク管理 */}
+        {lockUserName && (
+          <EditingLock
+            clientId={clientId}
+            resourceType="new-task"
+            resourceId={entityId}
+            userName={lockUserName}
+            label="新規タスク追加"
+          />
+        )}
         <TaskManager
           tasks={tasks}
           onStatusChange={handleTaskStatusChange}
