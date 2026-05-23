@@ -48,6 +48,7 @@ export default function ClientsPage() {
       'auth_junestry': '/clients/client-junestry',
       'auth_maripala': '/clients/client-mlqgs0vx-lpyp',
       'auth_tottori_kyosai': '/clients/client-mloz4flk-3jld',
+      'auth_marui': '/clients/client-mlvqwk7k-3asz',
     }
     for (const [key, path] of Object.entries(portalCompanyMap)) {
       const token = sessionStorage.getItem(key)

@@ -43,6 +43,7 @@ export default function EntitiesPage({ params }: PageProps) {
       'auth_junestry': 'client-junestry',
       'auth_maripala': 'client-mlqgs0vx-lpyp',
       'auth_tottori_kyosai': 'client-mloz4flk-3jld',
+      'auth_marui': 'client-mlvqwk7k-3asz',
     }
     let hasPortalToken = false
     for (const [key, allowedClientId] of Object.entries(portalKeys)) {

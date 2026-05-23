@@ -40,7 +40,7 @@ export default function DashboardPage({ params }: PageProps) {
 
   // ポータル経由時はロール名を取得
   useEffect(() => {
-    const token = sessionStorage.getItem('auth_junestry') || sessionStorage.getItem('auth_maripala')
+    const token = sessionStorage.getItem('auth_junestry') || sessionStorage.getItem('auth_maripala') || sessionStorage.getItem('auth_marui') || sessionStorage.getItem('auth_tottori_kyosai')
     if (token) {
       try {
         const decoded = JSON.parse(atob(token))

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Save, Calendar } from 'lucide-react'
+import { Save, Calendar, Eye } from 'lucide-react'
+import { isPortalReadOnly } from '@/lib/portal-auth'
 import type { PdcaCycle, PdcaStatus } from '@/lib/types'
 
 interface PdcaCycleEditorProps {
@@ -37,6 +38,11 @@ export function PdcaCycleEditor({ cycle, issueTitle, onSave, onStatusChange }: P
   const [status, setStatus] = useState<PdcaStatus>('open')
   const [cycleDate, setCycleDate] = useState(new Date().toISOString().split('T')[0])
   const [saving, setSaving] = useState(false)
+  const [readOnly, setReadOnly] = useState(false)
+
+  useEffect(() => {
+    setReadOnly(isPortalReadOnly())
+  }, [])
 
   useEffect(() => {
     if (cycle) {
@@ -99,7 +105,9 @@ export function PdcaCycleEditor({ cycle, issueTitle, onSave, onStatusChange }: P
                 type="date"
                 value={cycleDate}
                 onChange={(e) => setCycleDate(e.target.value)}
-                className="border rounded px-2 py-1 text-sm"
+                readOnly={readOnly}
+                disabled={readOnly}
+                className="border rounded px-2 py-1 text-sm disabled:bg-gray-50 disabled:text-gray-500"
               />
             </div>
           </div>
@@ -111,7 +119,8 @@ export function PdcaCycleEditor({ cycle, issueTitle, onSave, onStatusChange }: P
             <button
               key={option.value}
               onClick={() => handleStatusChange(option.value)}
-              className={`px-3 py-1 rounded-full text-sm ${
+              disabled={readOnly}
+              className={`px-3 py-1 rounded-full text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
                 status === option.value
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -131,9 +140,10 @@ export function PdcaCycleEditor({ cycle, issueTitle, onSave, onStatusChange }: P
               {field.label}
             </label>
             <textarea
-              className="w-full border rounded-lg p-3 min-h-[80px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border rounded-lg p-3 min-h-[80px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent read-only:bg-gray-50 read-only:text-gray-700"
               placeholder={field.placeholder}
               value={data[field.key]}
+              readOnly={readOnly}
               onChange={(e) => handleChange(field.key, e.target.value)}
             />
           </div>
@@ -141,14 +151,21 @@ export function PdcaCycleEditor({ cycle, issueTitle, onSave, onStatusChange }: P
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50"
-          >
-            <Save size={16} />
-            {saving ? '保存中...' : cycle ? '更新' : '作成'}
-          </button>
+          {readOnly ? (
+            <div className="flex items-center gap-2 text-gray-500 text-sm bg-gray-100 px-3 py-2 rounded-xl">
+              <Eye size={16} />
+              閲覧専用（編集権限がありません）
+            </div>
+          ) : (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50"
+            >
+              <Save size={16} />
+              {saving ? '保存中...' : cycle ? '更新' : '作成'}
+            </button>
+          )}
         </div>
       </div>
     </div>

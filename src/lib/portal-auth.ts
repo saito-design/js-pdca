@@ -6,7 +6,7 @@
  */
 
 export interface PortalSession {
-  role: 'owner' | 'manager' | 'staff'
+  role: 'owner' | 'manager' | 'store' | 'staff' | 'consultant'
   company: string
   exp: number
   storeId?: string  // 権限2(店長)/権限3(一般社員)の場合に正式店番が入る
@@ -77,4 +77,14 @@ export function isManagerOrAbove(): boolean {
 export function isStoreAccount(): boolean {
   const role = getPortalAuth()?.role
   return role === 'manager' || role === 'staff'
+}
+
+/**
+ * 閲覧専用ロール（staff / consultant）かどうか。
+ * 編集UI（保存・削除・追加ボタン等）を非表示／無効化する判定に使用する。
+ * ポータル経由で来ていない（auth = null）場合は false（編集可とみなす）。
+ */
+export function isPortalReadOnly(): boolean {
+  const role = getPortalAuth()?.role
+  return role === 'staff' || role === 'consultant'
 }

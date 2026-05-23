@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { Save, ChevronDown, ChevronUp, CheckSquare, Square } from 'lucide-react'
+import { Save, ChevronDown, ChevronUp, CheckSquare, Square, Eye } from 'lucide-react'
 import { extractTaskStrings } from '@/lib/task-utils'
+import { isPortalReadOnly } from '@/lib/portal-auth'
 import type { FieldLabels } from '@/lib/types'
 import { DEFAULT_FIELD_LABELS } from '@/lib/types'
 
@@ -65,6 +66,12 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldL
   const [expanded, setExpanded] = useState(true)
   const [saving, setSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [readOnly, setReadOnly] = useState(false)
+
+  // hydration後にポータル権限を判定
+  useEffect(() => {
+    setReadOnly(isPortalReadOnly())
+  }, [])
 
   // 初回マウント時に下書きを読み込む
   useEffect(() => {
@@ -169,10 +176,11 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldL
                 {field.label}
               </label>
               <textarea
-                className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y read-only:bg-gray-50 read-only:text-gray-700"
                 style={{ minHeight: `${field.rows * 1.5 + 1.5}rem` }}
                 placeholder={field.placeholder}
                 value={data[field.key]}
+                readOnly={readOnly}
                 onChange={(e) => handleChange(field.key, e.target.value)}
               />
             </div>
@@ -185,10 +193,11 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldL
                 {cf.label}
               </label>
               <textarea
-                className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y read-only:bg-gray-50 read-only:text-gray-700"
                 style={{ minHeight: '4.5rem' }}
                 placeholder={`${cf.label}を記入...`}
                 value={data.customValues?.[cf.key] || ''}
+                readOnly={readOnly}
                 onChange={(e) => handleChange(cf.key, e.target.value)}
               />
             </div>
@@ -215,18 +224,27 @@ export function PdcaEditor({ issueTitle, initialData, onSave, storageKey, fieldL
 
           {/* Actions */}
           <div className="flex items-center gap-2 pt-2">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50"
-            >
-              <Save size={16} />
-              {saving ? '保存中...' : '保存'}
-            </button>
-            {lastSaved && (
-              <span className="text-xs text-gray-400 ml-2">
-                下書き保存済み ({lastSaved.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })})
-              </span>
+            {readOnly ? (
+              <div className="flex items-center gap-2 text-gray-500 text-sm bg-gray-100 px-3 py-2 rounded-xl">
+                <Eye size={16} />
+                閲覧専用（編集権限がありません）
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Save size={16} />
+                  {saving ? '保存中...' : '保存'}
+                </button>
+                {lastSaved && (
+                  <span className="text-xs text-gray-400 ml-2">
+                    下書き保存済み ({lastSaved.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })})
+                  </span>
+                )}
+              </>
             )}
           </div>
         </div>
