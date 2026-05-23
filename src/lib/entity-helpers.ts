@@ -4,11 +4,16 @@ import {
   loadJsonFromFolder,
   saveJsonToFolder,
   findFolderByName,
+  listFilesInFolder,
+  deleteFile,
 } from '@/lib/drive'
 
 const CLIENTS_FILENAME = 'clients.json'
 const ENTITIES_FILENAME = 'entities.json'
 const MASTER_DATA_FILENAME = 'master-data.json'
+const MASTER_DATA_BAK_PREFIX = 'master-data.'
+const MASTER_DATA_BAK_SUFFIX = '.bak.json'
+const MASTER_DATA_BAK_KEEP = 7
 
 // マスターデータの型
 export interface MasterData {
@@ -142,6 +147,51 @@ export async function loadMasterData(clientFolderId: string): Promise<MasterData
     console.warn('マスターデータ読み込みエラー:', error)
     return null
   }
+}
+
+// バックアップ作成（直前のmaster-data.jsonをコピー名で保存・古いものを削除）
+async function backupMasterData(currentData: MasterData, clientFolderId: string): Promise<void> {
+  try {
+    const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12) // YYYYMMDDhhmm
+    const bakName = `${MASTER_DATA_BAK_PREFIX}${ts}${MASTER_DATA_BAK_SUFFIX}`
+    await saveJsonToFolder(currentData, bakName, clientFolderId)
+
+    // 古いバックアップを掃除
+    const files = await listFilesInFolder(clientFolderId)
+    const baks = files
+      .filter(f => f.name && f.name.startsWith(MASTER_DATA_BAK_PREFIX) && f.name.endsWith(MASTER_DATA_BAK_SUFFIX))
+      .sort((a, b) => (b.name || '').localeCompare(a.name || '')) // 新しい順
+    const toDelete = baks.slice(MASTER_DATA_BAK_KEEP)
+    for (const f of toDelete) {
+      if (f.id) await deleteFile(f.id).catch(() => undefined)
+    }
+  } catch (error) {
+    console.warn('master-data backup error (continue):', error)
+  }
+}
+
+/**
+ * master-data.json を「読込→変更→保存」のトランザクションで更新する。
+ * 読込から保存までのウィンドウを最小化することで並行更新の競合確率を減らす。
+ * 保存前に直前データを .bak.json として残す（最大7世代）。
+ */
+export async function mutateMasterData(
+  clientFolderId: string,
+  mutator: (data: MasterData) => void | Promise<void>
+): Promise<MasterData> {
+  const data: MasterData = (await loadMasterData(clientFolderId)) || {
+    version: '1',
+    updated_at: '',
+    issues: [],
+    cycles: [],
+    fieldLabels: {},
+  }
+  // バックアップは「現状」を残すのが目的なので mutator 適用前のスナップショットを使う
+  const snapshot: MasterData = JSON.parse(JSON.stringify(data))
+  await mutator(data)
+  await backupMasterData(snapshot, clientFolderId)
+  await saveMasterData(data, clientFolderId)
+  return data
 }
 
 // マスターデータ保存（保存前に重複除去）

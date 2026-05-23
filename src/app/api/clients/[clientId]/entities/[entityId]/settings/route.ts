@@ -5,7 +5,7 @@ import { isDriveConfigured } from '@/lib/drive'
 import {
   getClientFolderId,
   loadMasterData,
-  saveMasterData,
+  mutateMasterData,
 } from '@/lib/entity-helpers'
 
 export const dynamic = 'force-dynamic'
@@ -142,24 +142,11 @@ export async function PATCH(
       )
     }
 
-    // master-data.jsonに保存
-    let masterData = await loadMasterData(clientFolderId)
-    if (!masterData) {
-      masterData = {
-        version: '1.0',
-        updated_at: new Date().toISOString(),
-        issues: [],
-        cycles: [],
-        fieldLabels: {},
-      }
-    }
-
-    if (!masterData.fieldLabels) {
-      masterData.fieldLabels = {}
-    }
-
-    masterData.fieldLabels[entityId] = fieldLabels
-    await saveMasterData(masterData, clientFolderId)
+    // master-data.jsonに保存（読込→変更→保存をトランザクション化）
+    await mutateMasterData(clientFolderId, (data) => {
+      if (!data.fieldLabels) data.fieldLabels = {}
+      data.fieldLabels[entityId] = fieldLabels
+    })
 
     return NextResponse.json({
       success: true,

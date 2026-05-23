@@ -4,10 +4,10 @@ import { ApiResponse, Task, PdcaStatus } from '@/lib/types'
 import { isDriveConfigured } from '@/lib/drive'
 import {
   getClientFolderId,
-  loadMasterData,
-  saveMasterData,
+  mutateMasterData,
   loadEntities,
 } from '@/lib/entity-helpers'
+import type { PdcaIssue } from '@/lib/types'
 
 type RouteParams = {
   params: Promise<{ clientId: string; entityId: string; taskId: string }>
@@ -45,23 +45,6 @@ export async function PATCH(
       )
     }
 
-    const masterData = await loadMasterData(clientFolderId)
-    if (!masterData) {
-      return NextResponse.json(
-        { success: false, error: 'マスターデータがありません' },
-        { status: 404 }
-      )
-    }
-
-    const idx = masterData.issues.findIndex((i) => i.id === taskId && i.entity_id === entityId)
-
-    if (idx === -1) {
-      return NextResponse.json(
-        { success: false, error: 'タスクが見つかりません' },
-        { status: 404 }
-      )
-    }
-
     // ステータスのバリデーション
     if (body.status && !['open', 'doing', 'done', 'paused'].includes(body.status)) {
       return NextResponse.json(
@@ -70,25 +53,40 @@ export async function PATCH(
       )
     }
 
-    // 更新
-    if (body.title !== undefined) masterData.issues[idx].title = body.title
-    if (body.status !== undefined) masterData.issues[idx].status = body.status as PdcaStatus
-    masterData.issues[idx].updated_at = new Date().toISOString()
+    let updated: (PdcaIssue & { entity_name?: string; date?: string }) | null = null
+    let notFound = false
+    await mutateMasterData(clientFolderId, (data) => {
+      const idx = data.issues.findIndex((i) => i.id === taskId && i.entity_id === entityId)
+      if (idx === -1) {
+        notFound = true
+        return
+      }
+      if (body.title !== undefined) data.issues[idx].title = body.title
+      if (body.status !== undefined) data.issues[idx].status = body.status as PdcaStatus
+      data.issues[idx].updated_at = new Date().toISOString()
+      updated = data.issues[idx]
+    })
 
-    await saveMasterData(masterData, clientFolderId)
+    if (notFound || !updated) {
+      return NextResponse.json(
+        { success: false, error: 'タスクが見つかりません' },
+        { status: 404 }
+      )
+    }
 
     // Task形式で返す
     const entities = await loadEntities(clientFolderId)
     const entity = entities.find(e => e.id === entityId)
+    const updatedNonNull: PdcaIssue & { entity_name?: string; date?: string } = updated
     const updatedTask: Task = {
-      id: masterData.issues[idx].id,
-      client_id: masterData.issues[idx].client_id,
-      entity_name: masterData.issues[idx].entity_name || entity?.name || '',
-      title: masterData.issues[idx].title,
-      status: masterData.issues[idx].status,
-      date: masterData.issues[idx].date || masterData.issues[idx].created_at.split('T')[0],
-      created_at: masterData.issues[idx].created_at,
-      updated_at: masterData.issues[idx].updated_at,
+      id: updatedNonNull.id,
+      client_id: updatedNonNull.client_id,
+      entity_name: updatedNonNull.entity_name || entity?.name || '',
+      title: updatedNonNull.title,
+      status: updatedNonNull.status,
+      date: updatedNonNull.date || updatedNonNull.created_at.split('T')[0],
+      created_at: updatedNonNull.created_at,
+      updated_at: updatedNonNull.updated_at,
     }
 
     return NextResponse.json({ success: true, data: updatedTask })
@@ -144,25 +142,22 @@ export async function DELETE(
       )
     }
 
-    const masterData = await loadMasterData(clientFolderId)
-    if (!masterData) {
-      return NextResponse.json(
-        { success: false, error: 'マスターデータがありません' },
-        { status: 404 }
-      )
-    }
+    let notFound = false
+    await mutateMasterData(clientFolderId, (data) => {
+      const idx = data.issues.findIndex((i) => i.id === taskId && i.entity_id === entityId)
+      if (idx === -1) {
+        notFound = true
+        return
+      }
+      data.issues.splice(idx, 1)
+    })
 
-    const idx = masterData.issues.findIndex((i) => i.id === taskId && i.entity_id === entityId)
-
-    if (idx === -1) {
+    if (notFound) {
       return NextResponse.json(
         { success: false, error: 'タスクが見つかりません' },
         { status: 404 }
       )
     }
-
-    masterData.issues.splice(idx, 1)
-    await saveMasterData(masterData, clientFolderId)
 
     return NextResponse.json({ success: true, data: null })
   } catch (error) {

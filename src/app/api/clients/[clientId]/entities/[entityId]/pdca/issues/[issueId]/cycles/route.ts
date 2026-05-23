@@ -5,7 +5,7 @@ import { isDriveConfigured } from '@/lib/drive'
 import {
   getClientFolderId,
   loadMasterData,
-  saveMasterData,
+  mutateMasterData,
   extractAndAddTasksFromCycle,
 } from '@/lib/entity-helpers'
 
@@ -146,18 +146,10 @@ export async function POST(
       )
     }
 
-    const masterData = await loadMasterData(clientFolderId) || {
-      version: '1.0',
-      updated_at: '',
-      issues: [],
-      cycles: [],
-    }
-    masterData.cycles.push(newCycle)
-
-    // アクション内の【】タスクを自動抽出してissuesに追加
-    extractAndAddTasksFromCycle(masterData, newCycle)
-
-    await saveMasterData(masterData, clientFolderId)
+    await mutateMasterData(clientFolderId, (data) => {
+      data.cycles.push(newCycle)
+      extractAndAddTasksFromCycle(data, newCycle)
+    })
 
     return NextResponse.json({
       success: true,
@@ -228,41 +220,36 @@ export async function PATCH(
       )
     }
 
-    const masterData = await loadMasterData(clientFolderId)
-    if (!masterData) {
-      return NextResponse.json(
-        { success: false, error: 'マスターデータがありません' },
-        { status: 404 }
-      )
-    }
+    let updated: PdcaCycle | null = null
+    let notFound = false
+    await mutateMasterData(clientFolderId, (data) => {
+      const idx = data.cycles.findIndex((c) => c.id === id && c.issue_id === issueId)
+      if (idx === -1) {
+        notFound = true
+        return
+      }
+      if (situation !== undefined) data.cycles[idx].situation = situation
+      if (issue !== undefined) data.cycles[idx].issue = issue
+      if (action !== undefined) data.cycles[idx].action = action
+      if (target !== undefined) data.cycles[idx].target = target
+      if (status !== undefined) data.cycles[idx].status = status
+      data.cycles[idx].updated_at = new Date().toISOString()
+      if (action !== undefined) {
+        extractAndAddTasksFromCycle(data, data.cycles[idx])
+      }
+      updated = data.cycles[idx]
+    })
 
-    const idx = masterData.cycles.findIndex((c) => c.id === id && c.issue_id === issueId)
-
-    if (idx === -1) {
+    if (notFound || !updated) {
       return NextResponse.json(
         { success: false, error: 'サイクルが見つかりません' },
         { status: 404 }
       )
     }
 
-    // 更新
-    if (situation !== undefined) masterData.cycles[idx].situation = situation
-    if (issue !== undefined) masterData.cycles[idx].issue = issue
-    if (action !== undefined) masterData.cycles[idx].action = action
-    if (target !== undefined) masterData.cycles[idx].target = target
-    if (status !== undefined) masterData.cycles[idx].status = status
-    masterData.cycles[idx].updated_at = new Date().toISOString()
-
-    // アクションが更新された場合、新規タスクを抽出
-    if (action !== undefined) {
-      extractAndAddTasksFromCycle(masterData, masterData.cycles[idx])
-    }
-
-    await saveMasterData(masterData, clientFolderId)
-
     return NextResponse.json({
       success: true,
-      data: masterData.cycles[idx],
+      data: updated,
     })
   } catch (error) {
     if (error instanceof Error) {

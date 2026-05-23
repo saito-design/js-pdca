@@ -5,8 +5,7 @@ import { isDriveConfigured } from '@/lib/drive'
 import {
   getClientFolderId,
   loadMasterData,
-  saveMasterData,
-  MasterData,
+  mutateMasterData,
 } from '@/lib/entity-helpers'
 
 type RouteParams = {
@@ -134,14 +133,9 @@ export async function POST(
       updated_at: now,
     }
 
-    const masterData = await loadMasterData(clientFolderId) || {
-      version: '1.0',
-      updated_at: '',
-      issues: [],
-      cycles: [],
-    }
-    masterData.issues.push(newIssue)
-    await saveMasterData(masterData, clientFolderId)
+    await mutateMasterData(clientFolderId, (data) => {
+      data.issues.push(newIssue)
+    })
 
     return NextResponse.json({
       success: true,
@@ -219,35 +213,32 @@ export async function PATCH(
       )
     }
 
-    const masterData = await loadMasterData(clientFolderId)
-    if (!masterData) {
-      return NextResponse.json(
-        { success: false, error: 'マスターデータがありません' },
-        { status: 404 }
+    let updated: PdcaIssue | null = null
+    let notFound = false
+    await mutateMasterData(clientFolderId, (data) => {
+      const idx = data.issues.findIndex(
+        (i) => i.id === id && i.client_id === clientId && i.entity_id === entityId
       )
-    }
+      if (idx === -1) {
+        notFound = true
+        return
+      }
+      if (title !== undefined) data.issues[idx].title = title
+      if (status !== undefined) data.issues[idx].status = status as PdcaStatus
+      data.issues[idx].updated_at = new Date().toISOString()
+      updated = data.issues[idx]
+    })
 
-    const idx = masterData.issues.findIndex(
-      (i) => i.id === id && i.client_id === clientId && i.entity_id === entityId
-    )
-
-    if (idx === -1) {
+    if (notFound || !updated) {
       return NextResponse.json(
         { success: false, error: 'イシューが見つかりません' },
         { status: 404 }
       )
     }
 
-    // 更新
-    if (title !== undefined) masterData.issues[idx].title = title
-    if (status !== undefined) masterData.issues[idx].status = status as PdcaStatus
-    masterData.issues[idx].updated_at = new Date().toISOString()
-
-    await saveMasterData(masterData, clientFolderId)
-
     return NextResponse.json({
       success: true,
-      data: masterData.issues[idx],
+      data: updated,
     })
   } catch (error) {
     if (error instanceof Error) {

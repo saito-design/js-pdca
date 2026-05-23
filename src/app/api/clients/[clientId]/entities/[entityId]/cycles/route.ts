@@ -5,7 +5,7 @@ import { isDriveConfigured } from '@/lib/drive'
 import {
   getClientFolderId,
   loadMasterData,
-  saveMasterData,
+  mutateMasterData,
 } from '@/lib/entity-helpers'
 
 type RouteParams = {
@@ -111,24 +111,22 @@ export async function DELETE(
       )
     }
 
-    const masterData = await loadMasterData(clientFolderId)
-    if (!masterData) {
-      return NextResponse.json(
-        { success: false, error: 'マスターデータがありません' },
-        { status: 404 }
-      )
-    }
+    let notFound = false
+    await mutateMasterData(clientFolderId, (data) => {
+      const idx = data.cycles.findIndex(c => c.id === id && c.entity_id === entityId)
+      if (idx === -1) {
+        notFound = true
+        return
+      }
+      data.cycles.splice(idx, 1)
+    })
 
-    const idx = masterData.cycles.findIndex(c => c.id === id && c.entity_id === entityId)
-    if (idx === -1) {
+    if (notFound) {
       return NextResponse.json(
         { success: false, error: 'サイクルが見つかりません' },
         { status: 404 }
       )
     }
-
-    masterData.cycles.splice(idx, 1)
-    await saveMasterData(masterData, clientFolderId)
 
     return NextResponse.json({ success: true, data: null })
   } catch (error) {

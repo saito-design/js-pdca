@@ -6,7 +6,7 @@ import {
   getClientFolderId,
   loadEntities,
   loadMasterData,
-  saveMasterData,
+  mutateMasterData,
 } from '@/lib/entity-helpers'
 
 type RouteParams = {
@@ -139,14 +139,9 @@ export async function POST(
       updated_at: now,
     }
 
-    const masterData = await loadMasterData(clientFolderId) || {
-      version: '1.0',
-      updated_at: '',
-      issues: [],
-      cycles: [],
-    }
-    masterData.issues.push(newIssue)
-    await saveMasterData(masterData, clientFolderId)
+    await mutateMasterData(clientFolderId, (data) => {
+      data.issues.push(newIssue)
+    })
 
     // Task形式で返す
     const newTask: Task = {
